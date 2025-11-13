@@ -23,7 +23,7 @@ if uploaded_file:
                 text += t + "\n"
 
     # Find all card numbers in the PDF
-    card_numbers = sorted(set(re.findall(r"Card no\. XXXX XXXX XXXX (\d{4})", text)))
+    card_numbers = sorted(set(re.findall(r"XXXX XXXX XXXX (\d{4})", text)))
 
     if not card_numbers:
         st.error("No card numbers found in the statement.")
@@ -65,11 +65,13 @@ if uploaded_file:
                     date, desc, amount = match.groups()
                     desc_clean = desc.strip()
                     # Exclude credits *after* extraction (fix for missed lines)
-                    if not re.search(r"\bCRBPAY\b|\bCR\b", desc_clean, re.IGNORECASE):
+                    if not re.search(r"\bBPAY\b|\bCR\b", desc_clean, re.IGNORECASE):
                         transactions.append([date.strip(), desc_clean, float(amount.replace(",", ""))])
 
             if transactions:
                 df = pd.DataFrame(transactions, columns=["Date", "Description", "Amount (AUD)"])
+                # df.style.format({'Amount (AUD)':'${:.2f}'})
+                df.index += 1
 
                 # --- Summary ---
                 total_amount = df["Amount (AUD)"].sum()
