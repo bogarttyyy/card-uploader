@@ -30,8 +30,14 @@ if uploaded_file:
     else:
         selected_card = st.selectbox("Select card ending number:", card_numbers)
 
-        # Extract only section for the selected card
+        # Default card pattern for dependent cards
         card_pattern = fr"Card no\. XXXX XXXX XXXX {selected_card}(.*?)Closing balance"
+
+        if re.search(fr"Account No. XXXX XXXX XXXX {selected_card}", text, re.S):
+          # If the card is the main, switch card pattern
+          card_pattern = fr"TRANSACTION DETAILS(.*?)Card no\. XXXX XXXX XXXX"
+
+        # Extract only section for the selected card
         match = re.search(card_pattern, text, re.S)
 
         if not match:
