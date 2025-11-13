@@ -28,14 +28,58 @@ if uploaded_file:
     if not card_numbers:
         st.error("No card numbers found in the statement.")
     else:
+        # --- Identify certain line items BEFORE selecting card ---
+        # Here we’ll just demo by filtering for some keywords (you can adjust)
+        preview_pattern = r"([A-Za-z]{3}\s+\d{1,2})\s+([A-Za-z0-9&\-\*.,'\/\s]+?)\s+(\d{1,3}(?:,\d{3})*\.\d{2})"
+        preview_matches = re.findall(preview_pattern, text)
+        preview_data = []
+
+        for date, desc, amount in preview_matches:
+            if re.search(r"BUPA", desc, re.IGNORECASE):  # 👈 customize keywords here
+                preview_data.append({
+                    "Date": date.strip(),
+                    "Description": desc.strip(),
+                    "Split Type": "Percentage",  # default
+                    "Input": ""
+                })
+
+        if preview_data:
+            st.subheader("🧾 Items for Review")
+            st.caption("Adjust Split Type and Input values below:")
+
+            df_preview = pd.DataFrame(preview_data)
+
+            # Interactive editor
+            edited_df = st.data_editor(
+                df_preview,
+                column_config={
+                    "Split Type": st.column_config.SelectboxColumn(
+                        "Split Type",
+                        options=["Percentage", "Amount"],
+                        help="Choose whether to split by percentage or fixed amount"
+                    ),
+                    "Input": st.column_config.TextColumn(
+                        "Input",
+                        help="Enter an amount if Split Type = Amount",
+                        required=False
+                    )
+                },
+                disabled=["Date", "Description"],  # keep these read-only
+                use_container_width=True,
+                hide_index=True
+            )
+
+            st.divider()
+
+        # Continue with normal flow
         selected_card = st.selectbox("Select card ending number:", card_numbers)
 
         # Default card pattern for dependent cards
         card_pattern = fr"Card no\. XXXX XXXX XXXX {selected_card}(.*?)Closing balance"
 
         if re.search(fr"Account No. XXXX XXXX XXXX {selected_card}", text, re.S):
-          # If the card is the main, switch card pattern
-          card_pattern = fr"TRANSACTION DETAILS(.*?)Card no\. XXXX XXXX XXXX"
+            # If the card is the main, switch card pattern
+            card_pattern = fr"TRANSACTION DETAILS(.*?)Card no\. XXXX XXXX XXXX"
 
         # Extract only section for the selected card
         match = re.search(card_pattern, text, re.S)
@@ -51,13 +95,11 @@ if uploaded_file:
             buffer = ""
 
             for line in lines:
-                # Start of a transaction line
                 if re.match(r"^[A-Za-z]{3}\s+\d{1,2}\s", line):
                     if buffer:
                         merged_lines.append(buffer.strip())
                     buffer = line
                 else:
-                    # continuation of previous line (merchant code or address)
                     buffer += " " + line.strip()
             if buffer:
                 merged_lines.append(buffer.strip())
@@ -70,16 +112,13 @@ if uploaded_file:
                 if match:
                     date, desc, amount = match.groups()
                     desc_clean = desc.strip()
-                    # Exclude credits *after* extraction (fix for missed lines)
                     if not re.search(r"\bBPAY\b|\bCR\b", desc_clean, re.IGNORECASE):
                         transactions.append([date.strip(), desc_clean, float(amount.replace(",", ""))])
 
             if transactions:
                 df = pd.DataFrame(transactions, columns=["Date", "Description", "Amount (AUD)"])
-                # df.style.format({'Amount (AUD)':'${:.2f}'})
                 df.index += 1
 
-                # --- Summary ---
                 total_amount = df["Amount (AUD)"].sum()
                 st.success(f"✅ Found {len(df)} transactions for card ending in {selected_card}.")
                 st.metric(label="Total (AUD)", value=f"${total_amount:,.2f}")
