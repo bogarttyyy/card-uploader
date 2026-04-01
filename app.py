@@ -23,6 +23,9 @@ STATEMENT_PERIOD_RE = re.compile(
     r"Statement period\s+(?P<from>\d{2}/\d{2}/\d{2})-(?P<to>\d{2}/\d{2}/\d{2})"
 )
 MINIMUM_DUE_DATE_RE = re.compile(r"Minimum payment due date\s+(\d{2}/\d{2}/\d{2})")
+OPENING_BALANCE_RE = re.compile(r"Opening balance\s*\$([\d,]+\.\d{2})")
+PAYMENTS_AND_CREDITS_RE = re.compile(r"Payments and credits\s*\$([\d,]+\.\d{2})\s*CR")
+PURCHASES_RE = re.compile(r"Purchases\s*\$([\d,]+\.\d{2})")
 REFERENCE_NUMBER_RE = re.compile(r"^\d{14,}$")
 FOREIGN_CURRENCY_RE = re.compile(r"^[A-Z][A-Z ]+\s+\d[\d,]*\.\d{2}$")
 
@@ -50,6 +53,18 @@ def get_statement_metadata(full_text):
     closing_balance = (
         parse_amount(closing_balance_match.group(1)) if closing_balance_match else None
     )
+    opening_balance_match = OPENING_BALANCE_RE.search(full_text)
+    opening_balance = (
+        parse_amount(opening_balance_match.group(1)) if opening_balance_match else None
+    )
+    payments_and_credits_match = PAYMENTS_AND_CREDITS_RE.search(full_text)
+    payments_and_credits = (
+        parse_amount(payments_and_credits_match.group(1))
+        if payments_and_credits_match
+        else None
+    )
+    purchases_match = PURCHASES_RE.search(full_text)
+    purchases_total = parse_amount(purchases_match.group(1)) if purchases_match else None
     statement_period_match = STATEMENT_PERIOD_RE.search(full_text)
     statement_from = (
         statement_period_match.group("from") if statement_period_match else None
@@ -73,6 +88,9 @@ def get_statement_metadata(full_text):
 
     return {
         "closing_balance": closing_balance,
+        "opening_balance": opening_balance,
+        "payments_and_credits": payments_and_credits,
+        "purchases_total": purchases_total,
         "statement_from": format_statement_date(statement_from),
         "statement_to": format_statement_date(statement_to),
         "minimum_due_date": format_statement_date(minimum_due_date),
@@ -192,6 +210,87 @@ def compute_card_total(transactions, selected_card):
     return total
 
 
+def summarize_card(transactions, selected_card):
+    purchases = 0.0
+    credits = 0.0
+    payments = 0.0
+    for transaction in transactions:
+        if transaction["Card Number"] != selected_card:
+            continue
+        amount = transaction["Amount (AUD)"]
+        if transaction["Is Payment"]:
+            payments += amount
+        elif transaction["Is Credit"]:
+            credits += amount
+        else:
+            purchases += amount
+    return {
+        "Card Number": selected_card,
+        "Purchases": round(purchases, 2),
+        "Credits": round(credits, 2),
+        "Excluded BPAY": round(payments, 2),
+        "Net Total": round(purchases - credits, 2),
+    }
+
+
+def build_card_summary(transactions, card_numbers):
+    return [summarize_card(transactions, card_number) for card_number in card_numbers]
+
+
+def build_reconciliation_rows(metadata, transactions, card_numbers):
+    parsed_purchases = 0.0
+    parsed_credits = 0.0
+    parsed_payments = 0.0
+    for summary in build_card_summary(transactions, card_numbers):
+        parsed_purchases += summary["Purchases"]
+        parsed_credits += summary["Credits"]
+        parsed_payments += summary["Excluded BPAY"]
+
+    parsed_payments_and_credits = parsed_credits + parsed_payments
+
+    rows = []
+    entries = [
+        ("Opening Balance", metadata["opening_balance"], metadata["opening_balance"]),
+        ("Purchases", metadata["purchases_total"], parsed_purchases),
+        ("Payments and Credits", metadata["payments_and_credits"], parsed_payments_and_credits),
+        ("Closing Balance", metadata["closing_balance"], metadata["closing_balance"]),
+    ]
+
+    for label, statement_value, parsed_value in entries:
+        rows.append(
+            {
+                "Item": label,
+                "Statement": statement_value,
+                "Parsed": parsed_value,
+                "Delta": None
+                if statement_value is None or parsed_value is None
+                else round(parsed_value - statement_value, 2),
+            }
+        )
+
+    computed_closing = None
+    if (
+        metadata["opening_balance"] is not None
+        and parsed_purchases is not None
+        and parsed_payments_and_credits is not None
+    ):
+        computed_closing = (
+            metadata["opening_balance"] + parsed_purchases - parsed_payments_and_credits
+        )
+
+    rows.append(
+        {
+            "Item": "Computed Closing Balance",
+            "Statement": metadata["closing_balance"],
+            "Parsed": None if computed_closing is None else round(computed_closing, 2),
+            "Delta": None
+            if metadata["closing_balance"] is None or computed_closing is None
+            else round(computed_closing - metadata["closing_balance"], 2),
+        }
+    )
+    return rows
+
+
 def get_excluded_transactions_for_card(transactions, selected_card):
     excluded_rows = []
     for transaction in transactions:
@@ -267,6 +366,39 @@ def render_excluded_transactions(excluded_transactions):
         st.dataframe(styled_df, use_container_width=True)
 
 
+def render_card_summary(card_summary_rows):
+    if not card_summary_rows:
+        return
+
+    st.subheader("Per-Card Summary")
+    summary_df = pd.DataFrame(card_summary_rows)
+    styled_df = summary_df.style.format(
+        {
+            "Purchases": "${:,.2f}",
+            "Credits": "${:,.2f}",
+            "Excluded BPAY": "${:,.2f}",
+            "Net Total": "${:,.2f}",
+        }
+    )
+    st.dataframe(styled_df, use_container_width=True, hide_index=True)
+
+
+def render_reconciliation(reconciliation_rows):
+    if not reconciliation_rows:
+        return
+
+    st.subheader("Reconciliation")
+    reconciliation_df = pd.DataFrame(reconciliation_rows)
+    styled_df = reconciliation_df.style.format(
+        {
+            "Statement": lambda value: "-" if pd.isna(value) else f"${value:,.2f}",
+            "Parsed": lambda value: "-" if pd.isna(value) else f"${value:,.2f}",
+            "Delta": lambda value: "-" if pd.isna(value) else f"${value:,.2f}",
+        }
+    )
+    st.dataframe(styled_df, use_container_width=True, hide_index=True)
+
+
 def main():
     st.set_page_config(page_title="Credit Card PDF to CSV Converter", layout="centered")
 
@@ -288,17 +420,15 @@ exclude credits and BPAY repayments, and let you download a clean CSV with total
     metadata = get_statement_metadata(full_text)
     all_transactions = parse_transaction_pages(page_texts, metadata["primary_card"])
     computed_balance = compute_balance(all_transactions, metadata["card_numbers"])
+    card_summary_rows = build_card_summary(all_transactions, metadata["card_numbers"])
+    reconciliation_rows = build_reconciliation_rows(
+        metadata, all_transactions, metadata["card_numbers"]
+    )
 
     closing_balance = metadata["closing_balance"]
-    statement_from = metadata["statement_from"]
-    statement_to = metadata["statement_to"]
     minimum_due_date = metadata["minimum_due_date"]
     st.subheader("Statement Summary")
-    from_col, to_col = st.columns(2)
-    from_col.metric(label="From", value=statement_from or "-")
-    to_col.metric(label="To", value=statement_to or "-")
-    due_col, _ = st.columns(2)
-    due_col.metric(label="Due Date", value=minimum_due_date or "-")
+    st.metric(label="Due Date", value=minimum_due_date or "-")
 
     if closing_balance is not None:
         closing_col, computed_col = st.columns(2)
@@ -309,6 +439,9 @@ exclude credits and BPAY repayments, and let you download a clean CSV with total
     else:
         st.warning("Could not find a closing balance in this statement.")
         st.metric(label="Computed Balance", value=f"${computed_balance:,.2f}")
+
+    render_card_summary(card_summary_rows)
+    render_reconciliation(reconciliation_rows)
 
     card_numbers = metadata["card_numbers"]
     primary_card = metadata["primary_card"]
