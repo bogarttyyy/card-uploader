@@ -15,6 +15,12 @@ Running tests?
 python -m unittest discover -s tests -v
 ```
 
+Shortcut?
+
+```powershell
+.\test.ps1
+```
+
 Linting?
 
 ```
