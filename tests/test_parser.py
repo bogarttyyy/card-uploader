@@ -1,14 +1,20 @@
 from io import StringIO
 import unittest
+from datetime import date
 from pathlib import Path
 
 import pandas as pd
 
 from parser import (
+    StatementMetadata,
+    Transaction,
     build_card_summary,
     build_reconciliation_rows,
     compute_balance,
     get_transactions_for_card,
+    get_statement_metadata,
+    normalize_transaction_date,
+    parse_transaction_pages,
     parse_statement_from_path,
     transactions_to_export_rows,
 )
@@ -123,6 +129,115 @@ class ParserFixtureTests(unittest.TestCase):
 
         self.assertEqual(sorted(csv_df["Card Number"].astype(str).unique().tolist()), ["7248", "8489"])
         self.assertTrue((csv_df["Date"].str.match(r"\d{4}-\d{2}-\d{2}")).all())
+
+
+class ParserUnitTests(unittest.TestCase):
+    def test_get_statement_metadata_extracts_expected_fields_from_text(self):
+        sample_text = """
+Statement period 20/01/26-19/02/26
+Closing balance $3,575.18
+Minimum payment due date 16/03/26
+Opening balance $4,786.66
+Payments and credits $4,790.88 CR
+Purchases $3,579.40
+Account number XXXX XXXX XXXX 7248
+Card no. XXXX XXXX XXXX 8489
+"""
+        metadata = get_statement_metadata(sample_text)
+
+        self.assertEqual(metadata.primary_card, "7248")
+        self.assertEqual(metadata.card_numbers, ["7248", "8489"])
+        self.assertEqual(metadata.minimum_due_date, "16 March 2026")
+        self.assertEqual(metadata.closing_balance, 3575.18)
+        self.assertEqual(metadata.purchases_total, 3579.40)
+        self.assertEqual(metadata.payments_and_credits, 4790.88)
+
+    def test_parse_transaction_pages_skips_reference_and_foreign_currency_lines(self):
+        page_texts = [
+            """Account No. XXXX XXXX XXXX 7248 Statement period 20/01/26-19/02/26
+DATE TRANSACTION DETAILS AMOUNT $
+Jan 23 OPENAI *CHATGPT SUBSCR OPENAI.COM CA 31.86
+24492166034100017590151
+US DOLLAR 22.00
+Jan 24 BPAY PAYMENT - THANK YOU - 2,692.97 CR
+74984166043050019006582
+DATE TRANSACTION DETAILS Card no. XXXX XXXX XXXX 8489 AMOUNT $
+Feb 14 eBay O*20-14219-98730 Sydney 4.22 CR
+74773886045001083297082
+Continued over page..
+"""
+        ]
+
+        transactions = parse_transaction_pages(page_texts, "7248")
+
+        self.assertEqual(len(transactions), 3)
+        self.assertEqual(transactions[0].description, "OPENAI *CHATGPT SUBSCR OPENAI.COM CA")
+        self.assertFalse(transactions[0].is_credit)
+        self.assertTrue(transactions[1].is_payment)
+        self.assertEqual(transactions[2].card_number, "8489")
+        self.assertTrue(transactions[2].is_credit)
+
+    def test_normalize_transaction_date_handles_statement_year_boundary(self):
+        metadata = StatementMetadata(
+            closing_balance=None,
+            opening_balance=None,
+            payments_and_credits=None,
+            purchases_total=None,
+            statement_period_start=date(2025, 12, 20),
+            statement_period_end=date(2026, 1, 19),
+            statement_from="20 December 2025",
+            statement_to="19 January 2026",
+            minimum_due_date=None,
+            primary_card="7248",
+            card_numbers=["7248"],
+        )
+
+        self.assertEqual(normalize_transaction_date("Dec 31", metadata), "2025-12-31")
+        self.assertEqual(normalize_transaction_date("Jan 01", metadata), "2026-01-01")
+
+    def test_reconciliation_rows_support_synthetic_transactions(self):
+        metadata = StatementMetadata(
+            closing_balance=80.0,
+            opening_balance=100.0,
+            payments_and_credits=70.0,
+            purchases_total=50.0,
+            statement_period_start=date(2026, 1, 20),
+            statement_period_end=date(2026, 2, 19),
+            statement_from="20 January 2026",
+            statement_to="19 February 2026",
+            minimum_due_date=None,
+            primary_card="7248",
+            card_numbers=["7248"],
+        )
+        transactions = [
+            Transaction("7248", "Jan 21", "Merchant A", 50.0, False, False),
+            Transaction("7248", "Jan 22", "Refund", 20.0, True, False),
+            Transaction("7248", "Jan 23", "BPAY PAYMENT - THANK YOU -", 50.0, True, True),
+        ]
+
+        rows = build_reconciliation_rows(metadata, transactions, metadata.card_numbers)
+        deltas = {row.item: row.delta for row in rows}
+
+        self.assertEqual(deltas["Purchases"], 0.0)
+        self.assertEqual(deltas["Payments and Credits"], 0.0)
+        self.assertEqual(deltas["Computed Closing Balance"], 0.0)
+
+    def test_transactions_to_export_rows_returns_empty_for_no_transactions(self):
+        metadata = StatementMetadata(
+            closing_balance=None,
+            opening_balance=None,
+            payments_and_credits=None,
+            purchases_total=None,
+            statement_period_start=date(2026, 1, 20),
+            statement_period_end=date(2026, 2, 19),
+            statement_from="20 January 2026",
+            statement_to="19 February 2026",
+            minimum_due_date=None,
+            primary_card=None,
+            card_numbers=[],
+        )
+
+        self.assertEqual(transactions_to_export_rows([], metadata), [])
 
 
 if __name__ == "__main__":
