@@ -1,12 +1,18 @@
+from io import StringIO
 import unittest
 from pathlib import Path
+
+import pandas as pd
 
 from parser import (
     build_card_summary,
     build_reconciliation_rows,
     compute_balance,
+    get_transactions_for_card,
     parse_statement_from_path,
+    transactions_to_export_rows,
 )
+from ui import build_csv_data
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -75,6 +81,48 @@ class ParserFixtureTests(unittest.TestCase):
                 self.assertEqual(deltas["Purchases"], 0.0)
                 self.assertEqual(deltas["Payments and Credits"], 0.0)
                 self.assertEqual(deltas["Computed Closing Balance"], 0.0)
+
+    def test_export_rows_use_iso_dates_and_negative_credit_amounts(self):
+        pdf_path = STATEMENTS_DIR / "Statement_CRDf6412efd4bd3894627eb4c658e86df2457df654268874e6d59.pdf"
+        metadata, transactions = parse_statement_from_path(pdf_path)
+        export_rows = transactions_to_export_rows(transactions, metadata)
+
+        first_row = export_rows[0]
+        self.assertEqual(first_row["Date"], "2026-01-23")
+
+        credit_row = next(
+            row
+            for row in export_rows
+            if row["Description"] == "eBay O*20-14219-98730 Sydney"
+            and row["Amount (AUD)"] < 0
+        )
+        self.assertEqual(credit_row["Date"], "2026-02-14")
+        self.assertEqual(credit_row["Amount (AUD)"], -4.22)
+
+    def test_per_card_csv_export_excludes_bpay_and_keeps_negative_credits(self):
+        pdf_path = STATEMENTS_DIR / "Statement_CRDf6412efd4bd3894627eb4c658e86df2457df654268874e6d59.pdf"
+        metadata, transactions = parse_statement_from_path(pdf_path)
+        card_transactions = get_transactions_for_card(transactions, "8489")
+
+        csv_bytes = build_csv_data(card_transactions, metadata)
+        csv_df = pd.read_csv(StringIO(csv_bytes.decode("utf-8")))
+
+        self.assertNotIn("BPAY PAYMENT - THANK YOU", " ".join(csv_df["Description"].tolist()))
+        negative_credit = csv_df.loc[
+            csv_df["Description"] == "eBay O*20-14219-98730 Sydney", "Amount (AUD)"
+        ].min()
+        self.assertEqual(negative_credit, -4.22)
+
+    def test_combined_csv_export_contains_both_cards(self):
+        pdf_path = STATEMENTS_DIR / "Statement_CRD9c58559b0ebf4c5a8d313f114865af1dd5032a0356e926bd83.pdf"
+        metadata, transactions = parse_statement_from_path(pdf_path)
+        combined_transactions = [transaction for transaction in transactions if not transaction.is_payment]
+
+        csv_bytes = build_csv_data(combined_transactions, metadata)
+        csv_df = pd.read_csv(StringIO(csv_bytes.decode("utf-8")))
+
+        self.assertEqual(sorted(csv_df["Card Number"].astype(str).unique().tolist()), ["7248", "8489"])
+        self.assertTrue((csv_df["Date"].str.match(r"\d{4}-\d{2}-\d{2}")).all())
 
 
 if __name__ == "__main__":

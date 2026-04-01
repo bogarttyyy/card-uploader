@@ -1,6 +1,6 @@
 import re
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 
 import pdfplumber
@@ -37,6 +37,8 @@ class StatementMetadata:
     opening_balance: float | None
     payments_and_credits: float | None
     purchases_total: float | None
+    statement_period_start: date | None
+    statement_period_end: date | None
     statement_from: str | None
     statement_to: str | None
     minimum_due_date: str | None
@@ -87,6 +89,12 @@ def format_statement_date(value: str | None) -> str | None:
     if not value:
         return None
     return datetime.strptime(value, "%d/%m/%y").strftime("%d %B %Y")
+
+
+def parse_statement_period_date(value: str | None) -> date | None:
+    if not value:
+        return None
+    return datetime.strptime(value, "%d/%m/%y").date()
 
 
 def extract_pdf_text(uploaded_file) -> tuple[list[str], str]:
@@ -141,6 +149,8 @@ def get_statement_metadata(full_text: str) -> StatementMetadata:
             else None
         ),
         purchases_total=parse_amount(purchases_match.group(1)) if purchases_match else None,
+        statement_period_start=parse_statement_period_date(statement_from),
+        statement_period_end=parse_statement_period_date(statement_to),
         statement_from=format_statement_date(statement_from),
         statement_to=format_statement_date(statement_to),
         minimum_due_date=format_statement_date(minimum_due_date),
@@ -303,6 +313,53 @@ def build_reconciliation_rows(
     rows.append(
         _reconciliation_row("Computed Closing Balance", metadata.closing_balance, computed_closing)
     )
+    return rows
+
+
+def normalize_transaction_date(
+    transaction_date: str, metadata: StatementMetadata
+) -> str:
+    if not metadata.statement_period_start or not metadata.statement_period_end:
+        return transaction_date
+
+    parsed = datetime.strptime(transaction_date, "%b %d")
+    candidate_years = {
+        metadata.statement_period_start.year - 1,
+        metadata.statement_period_start.year,
+        metadata.statement_period_end.year,
+        metadata.statement_period_end.year + 1,
+    }
+
+    candidates = []
+    for year in sorted(candidate_years):
+        try:
+            candidate = date(year, parsed.month, parsed.day)
+        except ValueError:
+            continue
+        if metadata.statement_period_start <= candidate <= metadata.statement_period_end:
+            candidates.append(candidate)
+
+    if not candidates:
+        fallback_year = metadata.statement_period_end.year
+        return date(fallback_year, parsed.month, parsed.day).isoformat()
+
+    return candidates[0].isoformat()
+
+
+def transactions_to_export_rows(
+    transactions: list[Transaction], metadata: StatementMetadata
+) -> list[dict[str, object]]:
+    rows = []
+    for transaction in transactions:
+        amount = -transaction.amount_aud if transaction.is_credit else transaction.amount_aud
+        rows.append(
+            {
+                "Card Number": transaction.card_number,
+                "Date": normalize_transaction_date(transaction.date, metadata),
+                "Description": transaction.description,
+                "Amount (AUD)": amount,
+            }
+        )
     return rows
 
 

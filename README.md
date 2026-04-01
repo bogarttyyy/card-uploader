@@ -14,3 +14,15 @@ Running tests?
 ```
 python -m unittest discover -s tests -v
 ```
+
+Linting?
+
+```
+ruff check .
+```
+
+Type checking?
+
+```
+mypy
+```
