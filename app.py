@@ -1,4 +1,5 @@
 import re
+from datetime import datetime
 
 import pandas as pd
 import pdfplumber
@@ -18,6 +19,10 @@ CARD_HEADER_RE = re.compile(
 CARD_NUMBER_RE = re.compile(r"Card no\. XXXX XXXX XXXX (\d{4})")
 ACCOUNT_NUMBER_RE = re.compile(r"Account number XXXX XXXX XXXX (\d{4})")
 ACCOUNT_HEADER_RE = re.compile(r"Account No\. XXXX XXXX XXXX (\d{4})")
+STATEMENT_PERIOD_RE = re.compile(
+    r"Statement period\s+(?P<from>\d{2}/\d{2}/\d{2})-(?P<to>\d{2}/\d{2}/\d{2})"
+)
+MINIMUM_DUE_DATE_RE = re.compile(r"Minimum payment due date\s+(\d{2}/\d{2}/\d{2})")
 REFERENCE_NUMBER_RE = re.compile(r"^\d{14,}$")
 FOREIGN_CURRENCY_RE = re.compile(r"^[A-Z][A-Z ]+\s+\d[\d,]*\.\d{2}$")
 
@@ -34,10 +39,25 @@ def parse_amount(value):
     return float(value.replace(",", ""))
 
 
+def format_statement_date(value):
+    if not value:
+        return None
+    return datetime.strptime(value, "%d/%m/%y").strftime("%d %B %Y")
+
+
 def get_statement_metadata(full_text):
     closing_balance_match = re.search(r"Closing balance\s*\$([\d,]+\.\d{2})", full_text)
     closing_balance = (
         parse_amount(closing_balance_match.group(1)) if closing_balance_match else None
+    )
+    statement_period_match = STATEMENT_PERIOD_RE.search(full_text)
+    statement_from = (
+        statement_period_match.group("from") if statement_period_match else None
+    )
+    statement_to = statement_period_match.group("to") if statement_period_match else None
+    minimum_due_date_match = MINIMUM_DUE_DATE_RE.search(full_text)
+    minimum_due_date = (
+        minimum_due_date_match.group(1) if minimum_due_date_match else None
     )
 
     primary_card_match = ACCOUNT_NUMBER_RE.search(full_text)
@@ -53,6 +73,9 @@ def get_statement_metadata(full_text):
 
     return {
         "closing_balance": closing_balance,
+        "statement_from": format_statement_date(statement_from),
+        "statement_to": format_statement_date(statement_to),
+        "minimum_due_date": format_statement_date(minimum_due_date),
         "primary_card": primary_card,
         "card_numbers": card_numbers,
     }
@@ -267,10 +290,21 @@ exclude credits and BPAY repayments, and let you download a clean CSV with total
     computed_balance = compute_balance(all_transactions, metadata["card_numbers"])
 
     closing_balance = metadata["closing_balance"]
+    statement_from = metadata["statement_from"]
+    statement_to = metadata["statement_to"]
+    minimum_due_date = metadata["minimum_due_date"]
+    st.subheader("Statement Summary")
+    from_col, to_col = st.columns(2)
+    from_col.metric(label="From", value=statement_from or "-")
+    to_col.metric(label="To", value=statement_to or "-")
+    due_col, _ = st.columns(2)
+    due_col.metric(label="Due Date", value=minimum_due_date or "-")
+
     if closing_balance is not None:
-        st.subheader("Statement Summary")
         closing_col, computed_col = st.columns(2)
-        closing_col.metric(label="Closing Balance (In Statement)", value=f"${closing_balance:,.2f}")
+        closing_col.metric(
+            label="Closing Balance (In Statement)", value=f"${closing_balance:,.2f}"
+        )
         computed_col.metric(label="Computed Balance", value=f"${computed_balance:,.2f}")
     else:
         st.warning("Could not find a closing balance in this statement.")
