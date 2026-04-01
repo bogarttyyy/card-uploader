@@ -133,7 +133,7 @@ def get_transactions_for_card(transactions, selected_card):
     for transaction in transactions:
         if transaction["Card Number"] != selected_card:
             continue
-        if transaction["Is Credit"] or transaction["Is Payment"]:
+        if transaction["Is Payment"]:
             continue
         rows.append(
             [
@@ -141,6 +141,7 @@ def get_transactions_for_card(transactions, selected_card):
                 transaction["Date"],
                 transaction["Description"],
                 transaction["Amount (AUD)"],
+                transaction["Is Credit"],
             ]
         )
     return rows
@@ -173,7 +174,7 @@ def get_excluded_transactions_for_card(transactions, selected_card):
     for transaction in transactions:
         if transaction["Card Number"] != selected_card:
             continue
-        if not (transaction["Is Credit"] or transaction["Is Payment"]):
+        if not transaction["Is Payment"]:
             continue
         excluded_rows.append(
             {
@@ -181,7 +182,7 @@ def get_excluded_transactions_for_card(transactions, selected_card):
                 "Date": transaction["Date"],
                 "Description": transaction["Description"],
                 "Amount (AUD)": transaction["Amount (AUD)"],
-                "Excluded As": "Payment" if transaction["Is Payment"] else "Credit",
+                "Excluded As": "Payment",
             }
         )
     return excluded_rows
@@ -189,18 +190,38 @@ def get_excluded_transactions_for_card(transactions, selected_card):
 
 def generate_dataframe(transactions, selected_card, total_amount):
     df = pd.DataFrame(
-        transactions, columns=["Card Number", "Date", "Description", "Amount (AUD)"]
+        transactions,
+        columns=[
+            "Card Number",
+            "Date",
+            "Description",
+            "Amount (AUD)",
+            "Is Credit",
+        ],
     )
     df.index += 1
+    display_df = df.copy()
+    display_df["Amount (AUD)"] = display_df.apply(
+        lambda row: f"(${row['Amount (AUD)']:,.2f})"
+        if row["Is Credit"]
+        else f"${row['Amount (AUD)']:,.2f}",
+        axis=1,
+    )
     hide_card_df = df.style.hide(subset=["Card Number"], axis="columns").format(
         {"Amount (AUD)": "${:.2f}"}
+    )
+    hide_card_df = display_df.drop(columns=["Is Credit"]).style.hide(
+        subset=["Card Number"], axis="columns"
     )
 
     st.success(f"Found {len(df)} transactions for card ending in {selected_card}.")
     st.metric(label="Total (AUD)", value=f"${total_amount:,.2f}")
     st.dataframe(hide_card_df, use_container_width=True)
 
-    csv = df.to_csv(index=False).encode("utf-8")
+    csv_df = df.drop(columns=["Is Credit"]).copy()
+    credit_mask = df["Is Credit"]
+    csv_df.loc[credit_mask, "Amount (AUD)"] = -csv_df.loc[credit_mask, "Amount (AUD)"]
+    csv = csv_df.to_csv(index=False).encode("utf-8")
     st.download_button(
         label="Download CSV",
         data=csv,
@@ -249,7 +270,7 @@ exclude credits and BPAY repayments, and let you download a clean CSV with total
     if closing_balance is not None:
         st.subheader("Statement Summary")
         closing_col, computed_col = st.columns(2)
-        closing_col.metric(label="Closing Balance", value=f"${closing_balance:,.2f}")
+        closing_col.metric(label="Closing Balance (In Statement)", value=f"${closing_balance:,.2f}")
         computed_col.metric(label="Computed Balance", value=f"${computed_balance:,.2f}")
     else:
         st.warning("Could not find a closing balance in this statement.")
