@@ -146,7 +146,48 @@ def get_transactions_for_card(transactions, selected_card):
     return rows
 
 
-def generate_dataframe(transactions, selected_card):
+def compute_balance(transactions, card_numbers):
+    total = 0.0
+    for card_number in card_numbers:
+        total += compute_card_total(transactions, card_number)
+    return total
+
+
+def compute_card_total(transactions, selected_card):
+    total = 0.0
+    for transaction in transactions:
+        if transaction["Card Number"] != selected_card:
+            continue
+        if transaction["Is Payment"]:
+            continue
+        amount = transaction["Amount (AUD)"]
+        if transaction["Is Credit"]:
+            total -= amount
+        else:
+            total += amount
+    return total
+
+
+def get_excluded_transactions_for_card(transactions, selected_card):
+    excluded_rows = []
+    for transaction in transactions:
+        if transaction["Card Number"] != selected_card:
+            continue
+        if not (transaction["Is Credit"] or transaction["Is Payment"]):
+            continue
+        excluded_rows.append(
+            {
+                "Card Number": transaction["Card Number"],
+                "Date": transaction["Date"],
+                "Description": transaction["Description"],
+                "Amount (AUD)": transaction["Amount (AUD)"],
+                "Excluded As": "Payment" if transaction["Is Payment"] else "Credit",
+            }
+        )
+    return excluded_rows
+
+
+def generate_dataframe(transactions, selected_card, total_amount):
     df = pd.DataFrame(
         transactions, columns=["Card Number", "Date", "Description", "Amount (AUD)"]
     )
@@ -155,7 +196,6 @@ def generate_dataframe(transactions, selected_card):
         {"Amount (AUD)": "${:.2f}"}
     )
 
-    total_amount = df["Amount (AUD)"].sum()
     st.success(f"Found {len(df)} transactions for card ending in {selected_card}.")
     st.metric(label="Total (AUD)", value=f"${total_amount:,.2f}")
     st.dataframe(hide_card_df, use_container_width=True)
@@ -167,6 +207,20 @@ def generate_dataframe(transactions, selected_card):
         file_name=f"credit_card_{selected_card}_transactions.csv",
         mime="text/csv",
     )
+
+
+def render_excluded_transactions(excluded_transactions):
+    if not excluded_transactions:
+        return
+
+    st.caption("Audit")
+    with st.expander(
+        f"Show excluded rows ({len(excluded_transactions)})", expanded=False
+    ):
+        excluded_df = pd.DataFrame(excluded_transactions)
+        excluded_df.index += 1
+        styled_df = excluded_df.style.format({"Amount (AUD)": "${:.2f}"})
+        st.dataframe(styled_df, use_container_width=True)
 
 
 def main():
@@ -188,13 +242,18 @@ exclude credits and BPAY repayments, and let you download a clean CSV with total
 
     page_texts, full_text = extract_pdf_text(uploaded_file)
     metadata = get_statement_metadata(full_text)
+    all_transactions = parse_transaction_pages(page_texts, metadata["primary_card"])
+    computed_balance = compute_balance(all_transactions, metadata["card_numbers"])
 
     closing_balance = metadata["closing_balance"]
     if closing_balance is not None:
         st.subheader("Statement Summary")
-        st.metric(label="Closing Balance", value=f"${closing_balance:,.2f}")
+        closing_col, computed_col = st.columns(2)
+        closing_col.metric(label="Closing Balance", value=f"${closing_balance:,.2f}")
+        computed_col.metric(label="Computed Balance", value=f"${computed_balance:,.2f}")
     else:
         st.warning("Could not find a closing balance in this statement.")
+        st.metric(label="Computed Balance", value=f"${computed_balance:,.2f}")
 
     card_numbers = metadata["card_numbers"]
     primary_card = metadata["primary_card"]
@@ -207,14 +266,20 @@ exclude credits and BPAY repayments, and let you download a clean CSV with total
         st.error("No card numbers found in the statement.")
         return
 
-    all_transactions = parse_transaction_pages(page_texts, primary_card)
     selected_card = st.selectbox("Select card ending number:", card_numbers)
     transactions = get_transactions_for_card(all_transactions, selected_card)
+    card_total = compute_card_total(all_transactions, selected_card)
+    excluded_transactions = get_excluded_transactions_for_card(
+        all_transactions, selected_card
+    )
 
     if transactions:
-        generate_dataframe(transactions, selected_card)
+        generate_dataframe(transactions, selected_card, card_total)
+        render_excluded_transactions(excluded_transactions)
     else:
         st.warning(f"No valid transactions found for card ending in {selected_card}.")
+        st.metric(label="Total (AUD)", value=f"${card_total:,.2f}")
+        render_excluded_transactions(excluded_transactions)
 
 
 if __name__ == "__main__":
