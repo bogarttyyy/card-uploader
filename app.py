@@ -18,7 +18,10 @@ from ui import (
 
 
 def main() -> None:
-    st.set_page_config(page_title="Credit Card PDF to CSV Converter", layout="centered")
+    st.set_page_config(
+        page_title="Credit Card PDF to CSV Converter",
+        layout="centered",
+        page_icon="💳")
 
     st.title("Credit Card PDF to CSV Converter")
     st.write(
