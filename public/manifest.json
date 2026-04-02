@@ -1,6 +1,6 @@
 {
   "name": "Pampi Card Uploader",
-  "short_name": "App",
+  "short_name": "Pampi Card",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
