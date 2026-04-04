@@ -1,150 +1,267 @@
-# Next.js Browser-Only Migration Plan
+# Milestone-Based Next.js Port Plan
 
 ## Summary
-Recommend migrating to **Next.js**, not React Native, because the current product is fundamentally a file-upload/export workflow and does not depend on mobile-native capabilities.
+Port the app as a **new, separate project in `card-upload-nextjs/`** and keep the Python app unchanged while the migration is in progress.
 
-Given the chosen constraints, the target architecture should be:
+Target stack and constraints are fixed:
 
-- **New project folder: `card-upload-nextjs/`**
-- **Next.js App Router**
-- **TypeScript rewrite of the parser**
-- **Browser-only PDF processing**
-- **Exact behavioral parity with the current Python app before UX expansion**
+- Next.js App Router
+- TypeScript rewrite of the parser
+- Browser-only PDF processing
+- Exact functional parity before UX expansion
+- Every milestone must produce a runnable app state and include tests appropriate to that stage
 
-This keeps the user experience local/private while avoiding a split stack, but it does make parser fidelity the main technical risk. The migration should therefore be done in phases with parity gates, not as a single rewrite. The existing Python project should remain intact during the port; all Next.js scaffolding, code, tests, and assets should live under `card-upload-nextjs/` until the new app is proven ready.
+The key delivery rule is: **no milestone should leave the new project in a half-integrated state**. Each milestone ends with a working app, a defined acceptance bar, and tests that protect the behavior introduced so far.
 
-## Key Changes
+## Implementation Plan
 
-### 1. Re-architecture around a shared TypeScript domain core
-Create a pure TS core that mirrors the current Python contracts and stays framework-agnostic:
+### Milestone 1: Project Skeleton and Baseline UI Shell
+Goal: create a standalone Next.js app in `card-upload-nextjs/` that can run independently and establishes the test/tooling foundation.
 
-- `StatementMetadata`
-- `Transaction`
-- `CardSummary`
-- `ReconciliationRow`
-- parser helpers for metadata extraction, transaction parsing, date normalization, card summaries, reconciliation, and CSV row generation
+Deliverables:
+- Initialize Next.js + TypeScript project in `card-upload-nextjs/`
+- Add linting, formatting, test runner, and Playwright or equivalent browser test setup
+- Create a basic home page with:
+  - app title
+  - PDF upload control
+  - placeholder empty state
+  - placeholder results sections hidden until data exists
+- Copy or reference non-code assets needed for branding only if required by the new UI
+- Add a clear README in the new project with local run/test commands
 
-Rules to preserve exactly from Python:
+Runnable state:
+- `npm run dev` starts the Next.js app
+- Upload UI renders, but parsing can still be mocked or unimplemented
+- No dependency on the old Streamlit app at runtime
 
-- card detection and primary card ordering
-- statement-period extraction and due-date formatting
-- transaction-line regex behavior
-- BPAY exclusion logic
-- credit handling as negative export values
-- per-card totals and reconciliation deltas
-- year-boundary date normalization
+Tests:
+- unit test for basic utility/helpers used by the page shell
+- component test or RTL test for initial page render and empty state
+- browser smoke test that loads the page and verifies the upload input is present
+- CI/test command wired and passing inside `card-upload-nextjs/`
 
-This core should contain no React or Next.js code so it remains testable and reusable.
+Acceptance:
+- new app runs on its own
+- old Python app remains untouched and still runnable separately
+- test harness is established before parser work begins
 
-### 2. Use a client-side PDF parsing worker
-Because processing must stay in the browser, do not parse PDFs in React components directly.
+### Milestone 2: Domain Model and CSV Logic Port
+Goal: port the pure business logic that does not depend on PDF extraction yet.
 
-Implementation choice:
+Deliverables:
+- Implement TS domain types:
+  - `StatementMetadata`
+  - `Transaction`
+  - `CardSummary`
+  - `ReconciliationRow`
+  - export row type
+- Port pure logic from Python:
+  - amount parsing
+  - statement date formatting
+  - statement period date parsing
+  - card summary builders
+  - reconciliation builders
+  - transaction filtering by card
+  - card totals
+  - transaction export row generation
+  - year-boundary date normalization
+  - CSV generation
+- Keep this logic framework-agnostic in a shared library folder inside `card-upload-nextjs/`
 
-- use **`pdfjs-dist`** in a **Web Worker**
-- extract page text page-by-page
-- pass normalized text into the shared parser core
-- return parsed metadata, transactions, summaries, reconciliation rows, and CSV payload inputs
+Runnable state:
+- app still runs with placeholder UI
+- page can optionally render mocked parsed data using the real TS business logic
+- CSV generation works from mocked transactions
 
-Why this shape:
+Tests:
+- direct ports of Python unit tests for:
+  - metadata/date helpers
+  - year-boundary normalization
+  - reconciliation on synthetic transactions
+  - empty export rows
+- CSV tests covering:
+  - credits become negative values
+  - BPAY-excluded input does not appear when excluded transactions are omitted upstream
+  - multi-card exports preserve card numbers
+- snapshot-free tests preferred; assert exact values
 
-- keeps large PDFs from freezing the UI
-- avoids server upload/storage entirely
-- gives the closest analogue to the current `pdfplumber -> text -> regex parser` flow
+Acceptance:
+- all pure business logic is verified before PDF parsing starts
+- TS logic matches Python behavior for non-PDF-dependent functions
 
-Do not plan on React Native-style abstractions or server actions for parsing in v1.
+### Milestone 3: Raw PDF Text Extraction in the Browser Worker
+Goal: get reliable page-text extraction from PDFs in a worker without yet claiming full parser parity.
 
-### 3. Rebuild the Streamlit UX as a single-page web workflow
-Recreate the current behavior first, then improve styling after parity is proven.
+Deliverables:
+- Add `pdfjs-dist` browser-side extraction
+- Implement a Web Worker that:
+  - accepts a `File`
+  - extracts page text page-by-page
+  - returns normalized page text and concatenated full text
+  - emits structured extraction errors
+- Define worker result and error contracts
+- Connect the upload page to the worker and show extraction/loading/error states
 
-Primary screens/states:
+Runnable state:
+- user can upload a real PDF
+- app can display extraction success/failure and optionally a debug summary such as page count or extracted text stats
+- no full parsing UI required yet, but the upload flow is real
 
-1. empty state with PDF upload
-2. parsing/loading state
-3. parsed statement summary
-4. combined CSV download
-5. per-card summary table
-6. reconciliation table with mismatch warning
-7. card selector and transactions table
-8. excluded-transactions audit section
-9. recoverable error state for unsupported or malformed PDFs
+Tests:
+- worker unit tests for result/error normalization
+- integration tests for file upload invoking the worker successfully
+- browser test covering:
+  - upload starts loading state
+  - valid fixture PDF reaches extraction-complete state
+  - invalid/non-PDF file shows a user-facing error
+- if direct worker testing is awkward, isolate the extraction adapter behind testable functions and keep the worker thin
 
-UI defaults:
+Acceptance:
+- PDF extraction is real and stable in-browser
+- main thread remains responsive during extraction
+- extraction errors are typed and surfaced to the UI
 
-- App Router page with client components for interactive state
-- local state only; no database, auth, or persistent storage
-- CSV downloads via `Blob` + object URL
-- mobile-responsive layout, but still optimized for desktop upload/review
-- all new app code lives under `card-upload-nextjs/` so the legacy Python app remains runnable during migration
+### Milestone 4: Parser Rule Port and Fixture Parity
+Goal: port the Python parsing rules on top of extracted text and reach parity on known statement fixtures.
 
-### 4. Port the test suite before feature polishing
-Treat the Python tests as the migration spec.
+Deliverables:
+- Port regex-based metadata extraction
+- Port transaction page parsing rules, including:
+  - header detection
+  - primary card fallback
+  - stop-line behavior
+  - skipped line behavior
+  - credit detection
+  - BPAY payment detection
+- Implement `parseStatementFromPdf(file)` on top of worker extraction + TS parser core
+- Add fixture support in the new project for known-good statement PDFs used only by tests
 
-Plan:
+Runnable state:
+- uploading a supported statement produces parsed metadata and transactions
+- app can render a simple debug result view with totals and card numbers even if final UI is not complete
+- core parsing flow works end-to-end in the new app
 
-- port unit tests for metadata extraction, transaction parsing, date normalization, reconciliation, and export rows
-- port fixture-based tests against the sample PDFs in `statements/`
-- add browser-worker integration tests that verify worker extraction + parser output together
-- add UI smoke tests for upload, card switching, warnings, and CSV download availability
+Tests:
+- direct ports of Python parser tests for:
+  - metadata extraction from sample text
+  - transaction parsing with skipped reference/foreign currency lines
+  - fixture PDFs matching expected due dates, balances, card numbers, computed balances, and per-card totals
+  - reconciliation deltas equal zero for known-good fixtures
+- add an end-to-end integration test that uploads a fixture PDF and asserts visible parsed summary values
 
-Acceptance gate for parser parity:
+Acceptance:
+- known sample PDFs match Python outputs exactly on the locked parity fields
+- parser parity is proven before UI refinement
 
-- same detected card numbers
-- same due date / closing balance / computed balance
-- same per-card totals
-- same excluded BPAY behavior
-- same exported dates and signed amounts
-- reconciliation deltas all zero for the known-good fixtures
+### Milestone 5: Functional UI Parity with Streamlit
+Goal: reproduce the current Streamlit workflow in the Next.js UI using the now-working parser.
 
-Do not redesign copy, layout, or state flow beyond what is needed until these tests pass.
+Deliverables:
+- Implement the full user-facing flow:
+  - upload PDF
+  - statement summary
+  - closing balance and due date
+  - reconciliation warning if mismatched
+  - combined CSV download
+  - per-card summary table
+  - card selector
+  - transactions table
+  - excluded-transactions audit section
+- Preserve current behavior and wording closely unless change is needed for web UX clarity
+- Keep state local in the browser; no backend or persistence
+
+Runnable state:
+- user can complete the full current workflow in Next.js from upload to CSV download
+- app is functionally equivalent to the Streamlit version for supported PDFs
+
+Tests:
+- component tests for:
+  - summary rendering
+  - warning rendering
+  - card switching
+  - excluded transaction visibility
+- browser tests for:
+  - upload fixture PDF
+  - see summary and reconciliation
+  - switch cards and see correct totals
+  - download combined CSV
+  - verify per-card CSV links or downloads are present
+- CSV output tests should assert exact rows for at least one known fixture
+
+Acceptance:
+- a user can replace the old app for the current supported use case
+- all main user actions are covered by automated tests
+
+### Milestone 6: Hardening, Error Handling, and Release Readiness
+Goal: make the new app safe to rely on without changing scope.
+
+Deliverables:
+- Improve user-facing errors for:
+  - unsupported PDFs
+  - missing primary card
+  - no card numbers found
+  - no valid transactions found
+  - extraction failure
+- Add loading/progress polish and responsive layout cleanup
+- Remove any temporary debug views
+- Finalize docs and migration notes describing the old app as source-of-truth reference during transition
+
+Runnable state:
+- app is production-shaped and can be evaluated as the successor to the Python version
+- no debug-only UX remains
+
+Tests:
+- browser tests for failure paths and edge states
+- regression suite over all known statement fixtures
+- performance-oriented sanity test for larger PDFs if practical
+- final smoke test covering first load, upload, parse, card switch, and CSV export in one flow
+
+Acceptance:
+- success and failure paths are both covered
+- final suite protects against regressions well enough to continue future enhancements safely
 
 ## Public Interfaces / Contracts
-Define these stable interfaces up front in TypeScript:
+These interfaces should be defined early and kept stable across milestones:
 
-- `parseStatementFromPdf(file: File): Promise<{ metadata; transactions; cardSummary; reconciliationRows }>`
+- `parseStatementFromPdf(file: File): Promise<ParsedStatementResult>`
+- `extractPdfText(file: File): Promise<{ pageTexts: string[]; fullText: string }>`
 - `transactionsToExportRows(transactions, metadata): ExportRow[]`
 - `buildCsvData(rows): string`
 
-Worker boundary:
+Core result shape should include:
+- `metadata`
+- `transactions`
+- `cardSummary`
+- `reconciliationRows`
 
-- input: `File`
-- output: structured parsed result or typed parse error
-
-Typed errors to support in UI:
-
-- unsupported PDF/text extraction failure
-- no primary card found
-- no card numbers found
-- no valid transactions found
-- reconciliation mismatch warning state
-
-## Delivery Sequence
-1. Create a new sibling project folder named `card-upload-nextjs/` inside the current repository and keep all migration work scoped there.
-2. Stand up Next.js + TypeScript app shell and basic upload page inside `card-upload-nextjs/`.
-3. Port Python domain models and parser rules into pure TS modules.
-4. Implement `pdfjs-dist` text extraction in a worker.
-5. Port the Python test suite and fixture expectations.
-6. Reach exact parser parity on the sample statements.
-7. Rebuild the Streamlit UI flow in React.
-8. Add worker/UI integration tests and polish loading/error states.
-9. Optional follow-up: visual refresh, drag-and-drop, saved recent files, PWA behavior.
+Typed error classes or discriminated unions should cover:
+- extraction failure
+- unsupported file
+- missing primary card
+- missing card numbers
+- parse failure with partial context where possible
 
 ## Test Plan
-Must pass before calling the migration complete:
+Each milestone must leave behind a passing test suite, not temporary manual validation.
 
-- fixture PDFs parse with the same metadata and totals as Python
+Required layers across the project:
+- unit tests for pure parser/business logic
+- integration tests for worker + parser boundaries
+- component tests for key rendered states
+- browser tests for end-to-end user flows
+
+Minimum parity scenarios to keep for the full suite:
+- known fixture PDFs produce expected due date, closing balance, card numbers, computed balance, and per-card totals
+- reconciliation deltas are zero for known-good statements
 - credits export as negative numbers
-- BPAY rows are excluded from exported transaction sets
-- combined CSV contains both cards where expected
-- year-boundary dates normalize to the same ISO dates
-- reconciliation section matches current logic and flags mismatches correctly
-- large-file parsing does not block the main thread
-- upload/download flow works in current desktop Chromium and Safari-class browsers
+- BPAY rows stay excluded from export flows
+- combined CSV includes both cards where expected
+- year-boundary transaction dates normalize correctly
+- unsupported files and parse failures show useful errors
 
 ## Assumptions
-- Exact parity with the current Python behavior is more important than changing parsing semantics.
-- Browser-only privacy is a hard requirement for v1.
-- No auth, backend storage, or multi-user features are needed.
-- Supported PDFs are text-extractable statements similar to the current Macquarie Bank samples; OCR/scanned-PDF support is out of scope.
-- The migration should be developed as a separate Next.js project in `card-upload-nextjs/`, without modifying the old Python app beyond reading it as the source of truth.
-- The current Python test suite could not be executed fully in this environment because `pandas` is not installed, so the migration should treat the existing tests and fixtures as the baseline source of truth and verify them in a prepared dev environment.
+- `card-upload-nextjs/` is the only location where new app code will be created during the port.
+- The Python project remains unchanged and serves as the reference implementation during migration.
+- Browser-only processing is a hard requirement, so no API upload/parsing path should be introduced in these milestones.
+- Supported input remains text-extractable Macquarie credit card PDFs similar to the current fixtures; OCR/scanned statements are out of scope.
+- “Proper tests” means milestone-appropriate automated tests are added before the next milestone begins, not deferred to the end.
