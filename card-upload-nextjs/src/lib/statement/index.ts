@@ -14,6 +14,12 @@ export {
   summarizeCard,
   transactionsToExportRows,
 } from "@/lib/statement/core";
+export {
+  getStatementMetadata,
+  parseStatementFromExtraction,
+  parseStatementFromPdf,
+  parseTransactionPages,
+} from "@/lib/statement/parser";
 export type {
   CardSummary,
   ExportRow,
@@ -21,3 +27,4 @@ export type {
   StatementMetadata,
   Transaction,
 } from "@/lib/statement/types";
+export type { ParsedStatementResult } from "@/lib/statement/parser";

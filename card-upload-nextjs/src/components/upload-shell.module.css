@@ -89,6 +89,85 @@
   padding-top: 0.5rem;
 }
 
+.statusCard,
+.errorCard,
+.summaryCard {
+  border-radius: 1.2rem;
+  padding: 1.1rem 1.2rem;
+}
+
+.statusCard,
+.summaryCard {
+  border: 1px solid rgba(29, 43, 33, 0.12);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.errorCard {
+  border: 1px solid rgba(141, 52, 47, 0.22);
+  background: rgba(255, 240, 238, 0.9);
+}
+
+.statusTitle {
+  color: #172018;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.statusCopy {
+  margin-top: 0.35rem;
+  color: #455347;
+  line-height: 1.6;
+}
+
+.metrics {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.metric {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 8rem;
+}
+
+.metricLabel,
+.previewLabel {
+  color: #8c5a2b;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.metric strong {
+  color: #172018;
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.metricValueSmall {
+  font-size: 1rem;
+  line-height: 1.3;
+}
+
+.previewBlock {
+  margin-top: 1rem;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.previewText {
+  white-space: pre-wrap;
+  border-radius: 0.9rem;
+  background: rgba(23, 32, 24, 0.06);
+  padding: 0.85rem;
+  color: #2e3a30;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
 @media (max-width: 720px) {
   .panel {
     padding: 1.1rem;

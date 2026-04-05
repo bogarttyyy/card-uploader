@@ -11,12 +11,12 @@ export default function Home() {
   return (
     <main className={styles.page}>
       <section className={styles.hero}>
-        <p className={styles.eyebrow}>Milestone 1</p>
+        <p className={styles.eyebrow}>Milestone 4</p>
         <h1>Credit card statements, without the Streamlit runtime.</h1>
         <p className={styles.lead}>
-          This Next.js app is the standalone successor shell for the current Macquarie statement
-          converter. PDF parsing is not wired yet; the upload flow, test harness, and page
-          structure are in place.
+          This Next.js app now performs browser-side PDF extraction and parses supported statement
+          fixtures into metadata, card numbers, and reconciliation-ready totals. Full UI parity and
+          export flows are still being ported on top of that parser core.
         </p>
       </section>
 

@@ -40,6 +40,8 @@ Last updated: 6 April 2026
 Completed:
 - Milestone 1 is complete.
 - Milestone 2 is complete.
+- Milestone 3 is complete.
+- Milestone 4 is complete.
 - A standalone Next.js app now exists in `card-upload-nextjs/`.
 - The app includes a baseline upload shell with:
   - app title
@@ -58,6 +60,19 @@ Completed:
   - year-boundary date normalization
   - export row generation
   - CSV string generation
+- Browser-side PDF text extraction now exists with:
+  - `pdfjs-dist`
+  - a dedicated extraction worker
+  - typed extraction result/error contracts
+  - upload UI loading, success, and failure states
+  - browser verification against a real fixture PDF
+- TypeScript parser parity now exists for the known fixture path with:
+  - metadata extraction
+  - transaction-page parsing on normalized browser-extracted text
+  - primary-card detection
+  - card-level totals
+  - reconciliation parity for the known-good sample PDF
+  - parsed statement summary rendered in the browser UI
 - Test/tooling baseline is installed and passing:
   - ESLint
   - Vitest
@@ -72,15 +87,33 @@ Completed:
   - `npm run lint`
   - `npm test`
   - `npm run build`
+- Milestone 3 verification completed successfully with:
+  - `npm run lint`
+  - `npm test`
+  - `npm run build`
+  - `npm run test:e2e`
+- Milestone 4 verification completed successfully with:
+  - `npm run lint`
+  - `npm test`
+  - `npm run build`
+  - `npm run test:e2e`
 
 Implemented files of note:
 - `card-upload-nextjs/src/app/page.tsx`
 - `card-upload-nextjs/src/components/upload-shell.tsx`
+- `card-upload-nextjs/src/components/upload-shell.test.tsx`
 - `card-upload-nextjs/src/lib/files.ts`
+- `card-upload-nextjs/src/lib/pdf-extraction/core.ts`
+- `card-upload-nextjs/src/lib/pdf-extraction/types.ts`
+- `card-upload-nextjs/src/lib/pdf-extraction/index.ts`
+- `card-upload-nextjs/src/lib/pdf-extraction/index.test.ts`
 - `card-upload-nextjs/src/lib/statement/types.ts`
 - `card-upload-nextjs/src/lib/statement/core.ts`
 - `card-upload-nextjs/src/lib/statement/index.ts`
 - `card-upload-nextjs/src/lib/statement/core.test.ts`
+- `card-upload-nextjs/src/lib/statement/parser.ts`
+- `card-upload-nextjs/src/lib/statement/parser.test.ts`
+- `card-upload-nextjs/src/workers/pdf-text.worker.ts`
 - `card-upload-nextjs/src/app/page.test.tsx`
 - `card-upload-nextjs/src/lib/files.test.ts`
 - `card-upload-nextjs/tests/e2e/home.spec.ts`
@@ -93,11 +126,25 @@ Notes:
 - The root Python Streamlit app remains untouched and is still the source-of-truth implementation.
 - Milestone 2 intentionally stops short of regex-based metadata extraction and transaction-line parsing; those remain Milestone 4 work.
 - CSV generation in the Next.js project currently operates on exported row objects and returns a CSV string, matching the contract planned for the port.
+- Milestone 3 uses a dedicated Web Worker plus `pdfjs-dist` for browser-only extraction.
+- The current extraction preview is a debug summary only; it confirms page text is available but does not yet claim parser parity with the Python implementation.
+- `pdfjs-dist` required `GlobalWorkerOptions.workerSrc` to be set explicitly inside the extraction worker for real browser runs.
+- Milestone 4 required a normalization step that reorders `pdfjs-dist` text items left-to-right within each visual line before parsing.
+- The parser now supports both the original single-line Python-style transaction rows and the multi-line row format produced by browser extraction for the known fixture.
+- Current parity is proven against the known March 2026 sample PDF already in `statements/`; broader fixture coverage can be expanded later if more statement PDFs are added to the repo.
 
 Resume from here:
-- Start Milestone 3 next.
-- First task should be adding browser-side PDF text extraction with `pdfjs-dist` behind a worker boundary and keeping the worker result/error contracts explicit.
-- Preserve the new `src/lib/statement/` business-logic layer as the parser-independent core and build extraction/parsing on top of it rather than moving logic back into React components.
+- Start Milestone 5 next.
+- First task should be replacing the current debug-style parsed summary with the full Streamlit-equivalent workflow:
+  - statement summary
+  - reconciliation warning
+  - combined CSV download
+  - per-card summary table
+  - card selector
+  - transactions table
+  - excluded-transactions audit section
+- Reuse the parser/business-logic already in `src/lib/statement/` and keep UI state local in the browser.
+- Browser tests should move from parsed-summary assertions to actual functional workflow assertions, including card switching and CSV download presence.
 
 ## Implementation Plan
 
@@ -182,6 +229,8 @@ Acceptance:
 ### Milestone 3: Raw PDF Text Extraction in the Browser Worker
 Goal: get reliable page-text extraction from PDFs in a worker without yet claiming full parser parity.
 
+Status: Complete on 6 April 2026
+
 Deliverables:
 - Add `pdfjs-dist` browser-side extraction
 - Implement a Web Worker that:
@@ -213,6 +262,8 @@ Acceptance:
 
 ### Milestone 4: Parser Rule Port and Fixture Parity
 Goal: port the Python parsing rules on top of extracted text and reach parity on known statement fixtures.
+
+Status: Complete on 6 April 2026
 
 Deliverables:
 - Port regex-based metadata extraction
