@@ -36,13 +36,12 @@ test("extracts text from the fixture pdf", async ({ page }) => {
 
   await page.getByLabel("Choose a PDF statement").setInputFiles(fixturePath);
 
-  await expect(
-    page.getByRole("heading", {
-      name: /parsed statement ready/i,
-    }),
-  ).toBeVisible();
+  await expect(page.getByRole("link", { name: /download combined csv/i })).toBeVisible();
   await expect(page.getByText("13 April 2026")).toBeVisible();
   await expect(page.getByText("$3,053.10").first()).toBeVisible();
   await expect(page.getByText("7248, 8489")).toBeVisible();
-  await expect(page.getByText(/7248 \$1,239\.57 \| 8489 \$1,813\.53/i)).toBeVisible();
+  await expect(page.getByRole("combobox")).toHaveValue("7248");
+  await page.getByRole("combobox").selectOption("8489");
+  await expect(page.getByRole("combobox")).toHaveValue("8489");
+  await expect(page.getByText("OPENAI *CHATGPT SUBSCR OPENAI.COM CA")).toBeVisible();
 });

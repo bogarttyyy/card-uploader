@@ -3,6 +3,11 @@
   gap: 1.5rem;
 }
 
+.workflow {
+  display: grid;
+  gap: 1.25rem;
+}
+
 .panel {
   position: relative;
   overflow: hidden;
@@ -119,6 +124,20 @@
   line-height: 1.6;
 }
 
+.sectionHeader {
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  align-items: start;
+  margin-bottom: 1rem;
+}
+
+.sectionTitle {
+  color: #172018;
+  font-size: 1.25rem;
+  line-height: 1.1;
+}
+
 .metrics {
   display: flex;
   gap: 1rem;
@@ -151,6 +170,104 @@
   line-height: 1.3;
 }
 
+.downloadButton,
+.inlineLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(23, 32, 24, 0.12);
+  border-radius: 999px;
+  background: #172018;
+  color: #f7f1e6;
+  padding: 0.7rem 1rem;
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.inlineLink {
+  padding: 0.35rem 0.7rem;
+  font-size: 0.82rem;
+}
+
+.warningCard {
+  margin-top: 1rem;
+  border: 1px solid rgba(168, 121, 45, 0.25);
+  border-radius: 0.9rem;
+  background: rgba(255, 246, 224, 0.92);
+  color: #5b4522;
+  padding: 0.85rem 1rem;
+  line-height: 1.5;
+}
+
+.tableWrap {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 40rem;
+}
+
+.table th,
+.table td {
+  border-top: 1px solid rgba(23, 32, 24, 0.08);
+  padding: 0.8rem 0.55rem;
+  text-align: left;
+  vertical-align: top;
+  font-size: 0.95rem;
+  color: #243127;
+}
+
+.table th {
+  color: #8c5a2b;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.deltaWarning {
+  color: #9c4427 !important;
+  font-weight: 700;
+}
+
+.selector {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 10rem;
+}
+
+.selectorLabel {
+  color: #8c5a2b;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.select {
+  border: 1px solid rgba(23, 32, 24, 0.12);
+  border-radius: 0.8rem;
+  background: #fff;
+  color: #172018;
+  padding: 0.7rem 0.8rem;
+  font: inherit;
+}
+
+.auditBlock {
+  margin-top: 1rem;
+  border-top: 1px solid rgba(23, 32, 24, 0.08);
+  padding-top: 1rem;
+}
+
+.auditSummary {
+  cursor: pointer;
+  color: #172018;
+  font-weight: 600;
+  margin-bottom: 0.9rem;
+}
+
 .previewBlock {
   margin-top: 1rem;
   display: grid;
@@ -176,5 +293,13 @@
   .resultsHeader {
     flex-direction: column;
     align-items: start;
+  }
+
+  .sectionHeader {
+    flex-direction: column;
+  }
+
+  .table {
+    min-width: 34rem;
   }
 }

@@ -42,6 +42,7 @@ Completed:
 - Milestone 2 is complete.
 - Milestone 3 is complete.
 - Milestone 4 is complete.
+- Milestone 5 is complete.
 - A standalone Next.js app now exists in `card-upload-nextjs/`.
 - The app includes a baseline upload shell with:
   - app title
@@ -73,6 +74,15 @@ Completed:
   - card-level totals
   - reconciliation parity for the known-good sample PDF
   - parsed statement summary rendered in the browser UI
+- Functional UI parity now exists for the main workflow with:
+  - statement summary
+  - reconciliation table
+  - combined CSV download
+  - per-card summary table
+  - per-card CSV downloads
+  - card selector
+  - transactions table
+  - excluded-transactions audit section
 - Test/tooling baseline is installed and passing:
   - ESLint
   - Vitest
@@ -97,11 +107,17 @@ Completed:
   - `npm test`
   - `npm run build`
   - `npm run test:e2e`
+- Milestone 5 verification completed successfully with:
+  - `npm run lint`
+  - `npm test`
+  - `npm run build`
+  - `npm run test:e2e`
 
 Implemented files of note:
 - `card-upload-nextjs/src/app/page.tsx`
 - `card-upload-nextjs/src/components/upload-shell.tsx`
 - `card-upload-nextjs/src/components/upload-shell.test.tsx`
+- `card-upload-nextjs/src/components/upload-shell.module.css`
 - `card-upload-nextjs/src/lib/files.ts`
 - `card-upload-nextjs/src/lib/pdf-extraction/core.ts`
 - `card-upload-nextjs/src/lib/pdf-extraction/types.ts`
@@ -132,19 +148,14 @@ Notes:
 - Milestone 4 required a normalization step that reorders `pdfjs-dist` text items left-to-right within each visual line before parsing.
 - The parser now supports both the original single-line Python-style transaction rows and the multi-line row format produced by browser extraction for the known fixture.
 - Current parity is proven against the known March 2026 sample PDF already in `statements/`; broader fixture coverage can be expanded later if more statement PDFs are added to the repo.
+- Milestone 5 keeps all workflow state in the browser and uses data-URI download links for combined and per-card CSV exports.
+- The current Next.js UI now covers the main Streamlit-equivalent happy path for the known supported fixture PDF.
 
 Resume from here:
-- Start Milestone 5 next.
-- First task should be replacing the current debug-style parsed summary with the full Streamlit-equivalent workflow:
-  - statement summary
-  - reconciliation warning
-  - combined CSV download
-  - per-card summary table
-  - card selector
-  - transactions table
-  - excluded-transactions audit section
-- Reuse the parser/business-logic already in `src/lib/statement/` and keep UI state local in the browser.
-- Browser tests should move from parsed-summary assertions to actual functional workflow assertions, including card switching and CSV download presence.
+- Start Milestone 6 next.
+- First task should be hardening the user-facing failure states and removing or reducing remaining debug-oriented UI such as the raw extraction preview if it is no longer needed.
+- Add explicit handling for missing primary card, missing card numbers, no valid transactions found, and extraction/parsing failures in the visible UI.
+- Keep the existing browser-local architecture and extend browser tests to cover the failure paths and final polished flow.
 
 ## Implementation Plan
 
@@ -296,6 +307,8 @@ Acceptance:
 
 ### Milestone 5: Functional UI Parity with Streamlit
 Goal: reproduce the current Streamlit workflow in the Next.js UI using the now-working parser.
+
+Status: Complete on 6 April 2026
 
 Deliverables:
 - Implement the full user-facing flow:
