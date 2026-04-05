@@ -39,12 +39,25 @@ Last updated: 6 April 2026
 
 Completed:
 - Milestone 1 is complete.
+- Milestone 2 is complete.
 - A standalone Next.js app now exists in `card-upload-nextjs/`.
 - The app includes a baseline upload shell with:
   - app title
   - PDF upload control
   - empty results state
   - parser-dependent result sections still hidden/pending
+- Framework-agnostic TypeScript business logic now exists for:
+  - domain types
+  - amount parsing
+  - statement date formatting
+  - statement period date parsing
+  - per-card filtering
+  - card totals
+  - card summaries
+  - reconciliation rows
+  - year-boundary date normalization
+  - export row generation
+  - CSV string generation
 - Test/tooling baseline is installed and passing:
   - ESLint
   - Vitest
@@ -55,11 +68,19 @@ Completed:
   - `npm test`
   - `npm run build`
   - `npm run test:e2e`
+- Milestone 2 verification completed successfully with:
+  - `npm run lint`
+  - `npm test`
+  - `npm run build`
 
 Implemented files of note:
 - `card-upload-nextjs/src/app/page.tsx`
 - `card-upload-nextjs/src/components/upload-shell.tsx`
 - `card-upload-nextjs/src/lib/files.ts`
+- `card-upload-nextjs/src/lib/statement/types.ts`
+- `card-upload-nextjs/src/lib/statement/core.ts`
+- `card-upload-nextjs/src/lib/statement/index.ts`
+- `card-upload-nextjs/src/lib/statement/core.test.ts`
 - `card-upload-nextjs/src/app/page.test.tsx`
 - `card-upload-nextjs/src/lib/files.test.ts`
 - `card-upload-nextjs/tests/e2e/home.spec.ts`
@@ -70,11 +91,13 @@ Notes:
 - `next/font/google` was removed from the new app because sandbox/network-restricted builds could not fetch Google-hosted font assets reliably.
 - `allowedDevOrigins: ["127.0.0.1"]` was added to `card-upload-nextjs/next.config.ts` so Playwright can run cleanly against the dev server.
 - The root Python Streamlit app remains untouched and is still the source-of-truth implementation.
+- Milestone 2 intentionally stops short of regex-based metadata extraction and transaction-line parsing; those remain Milestone 4 work.
+- CSV generation in the Next.js project currently operates on exported row objects and returns a CSV string, matching the contract planned for the port.
 
 Resume from here:
-- Start Milestone 2 next.
-- First task should be creating framework-agnostic TypeScript domain types and pure business-logic helpers under a shared library folder inside `card-upload-nextjs/`.
-- Port the Python tests for non-PDF-dependent logic before beginning browser-side PDF extraction work.
+- Start Milestone 3 next.
+- First task should be adding browser-side PDF text extraction with `pdfjs-dist` behind a worker boundary and keeping the worker result/error contracts explicit.
+- Preserve the new `src/lib/statement/` business-logic layer as the parser-independent core and build extraction/parsing on top of it rather than moving logic back into React components.
 
 ## Implementation Plan
 
@@ -112,6 +135,8 @@ Acceptance:
 
 ### Milestone 2: Domain Model and CSV Logic Port
 Goal: port the pure business logic that does not depend on PDF extraction yet.
+
+Status: Complete on 6 April 2026
 
 Deliverables:
 - Implement TS domain types:
