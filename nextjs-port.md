@@ -24,6 +24,15 @@ Documentation rule:
   - the exact next recommended starting point for the following session
 - Treat this document as the handoff log for continuing the port across sessions.
 
+Approval rule:
+- Before beginning any new milestone, first present the planned milestone scope to the user.
+- That pre-work summary must state:
+  - which milestone is about to start
+  - what will be implemented
+  - what tests/verification will be run
+  - any expected risks, dependencies, or open decisions
+- Do not start implementation work for that milestone until the user explicitly agrees to proceed.
+
 ## Current Status
 
 Last updated: 6 April 2026
