@@ -13,10 +13,66 @@ Target stack and constraints are fixed:
 
 The key delivery rule is: **no milestone should leave the new project in a half-integrated state**. Each milestone ends with a working app, a defined acceptance bar, and tests that protect the behavior introduced so far.
 
+Documentation rule:
+- Whenever a milestone is completed, update this file in the same session before stopping work.
+- Record:
+  - milestone status
+  - date completed
+  - what was shipped
+  - verification commands that were run
+  - any important implementation notes or deviations from the original plan
+  - the exact next recommended starting point for the following session
+- Treat this document as the handoff log for continuing the port across sessions.
+
+## Current Status
+
+Last updated: 6 April 2026
+
+Completed:
+- Milestone 1 is complete.
+- A standalone Next.js app now exists in `card-upload-nextjs/`.
+- The app includes a baseline upload shell with:
+  - app title
+  - PDF upload control
+  - empty results state
+  - parser-dependent result sections still hidden/pending
+- Test/tooling baseline is installed and passing:
+  - ESLint
+  - Vitest
+  - React Testing Library
+  - Playwright
+- Local verification completed successfully with:
+  - `npm run lint`
+  - `npm test`
+  - `npm run build`
+  - `npm run test:e2e`
+
+Implemented files of note:
+- `card-upload-nextjs/src/app/page.tsx`
+- `card-upload-nextjs/src/components/upload-shell.tsx`
+- `card-upload-nextjs/src/lib/files.ts`
+- `card-upload-nextjs/src/app/page.test.tsx`
+- `card-upload-nextjs/src/lib/files.test.ts`
+- `card-upload-nextjs/tests/e2e/home.spec.ts`
+- `card-upload-nextjs/vitest.config.ts`
+- `card-upload-nextjs/playwright.config.ts`
+
+Notes:
+- `next/font/google` was removed from the new app because sandbox/network-restricted builds could not fetch Google-hosted font assets reliably.
+- `allowedDevOrigins: ["127.0.0.1"]` was added to `card-upload-nextjs/next.config.ts` so Playwright can run cleanly against the dev server.
+- The root Python Streamlit app remains untouched and is still the source-of-truth implementation.
+
+Resume from here:
+- Start Milestone 2 next.
+- First task should be creating framework-agnostic TypeScript domain types and pure business-logic helpers under a shared library folder inside `card-upload-nextjs/`.
+- Port the Python tests for non-PDF-dependent logic before beginning browser-side PDF extraction work.
+
 ## Implementation Plan
 
 ### Milestone 1: Project Skeleton and Baseline UI Shell
 Goal: create a standalone Next.js app in `card-upload-nextjs/` that can run independently and establishes the test/tooling foundation.
+
+Status: Complete on 6 April 2026
 
 Deliverables:
 - Initialize Next.js + TypeScript project in `card-upload-nextjs/`
