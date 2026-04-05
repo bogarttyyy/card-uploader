@@ -1,0 +1,101 @@
+.shell {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.panel {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(29, 43, 33, 0.12);
+  border-radius: 1.5rem;
+  background:
+    linear-gradient(140deg, rgba(245, 236, 214, 0.94), rgba(255, 250, 241, 0.98)),
+    #fffaf1;
+  box-shadow: 0 30px 60px rgba(29, 43, 33, 0.08);
+  padding: 1.5rem;
+}
+
+.panelHeader {
+  display: grid;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.panelLabel {
+  color: #8c5a2b;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.panelHeader h2,
+.resultsHeader h2 {
+  color: #172018;
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  line-height: 1.05;
+}
+
+.panelCopy,
+.resultsCopy,
+.fileHint {
+  color: #455347;
+  font-size: 0.98rem;
+  line-height: 1.6;
+  max-width: 62ch;
+}
+
+.dropzone {
+  display: grid;
+  gap: 0.4rem;
+  border: 1px dashed rgba(23, 32, 24, 0.28);
+  border-radius: 1.1rem;
+  background: rgba(255, 255, 255, 0.78);
+  padding: 1.2rem;
+  cursor: pointer;
+}
+
+.dropzone:hover {
+  border-color: rgba(23, 32, 24, 0.5);
+}
+
+.dropzoneTitle {
+  color: #172018;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.dropzoneCopy {
+  color: #6b766c;
+  font-size: 0.95rem;
+}
+
+.input {
+  margin-top: 0.85rem;
+  color: #172018;
+}
+
+.fileHint {
+  min-height: 1.5rem;
+  margin-top: 1rem;
+}
+
+.resultsHeader {
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  align-items: end;
+  border-top: 1px solid rgba(29, 43, 33, 0.12);
+  padding-top: 0.5rem;
+}
+
+@media (max-width: 720px) {
+  .panel {
+    padding: 1.1rem;
+  }
+
+  .resultsHeader {
+    flex-direction: column;
+    align-items: start;
+  }
+}
