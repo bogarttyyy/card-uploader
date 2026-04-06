@@ -43,6 +43,7 @@ Completed:
 - Milestone 3 is complete.
 - Milestone 4 is complete.
 - Milestone 5 is complete.
+- Milestone 6 is complete.
 - A standalone Next.js app now exists in `card-upload-nextjs/`.
 - The app includes a baseline upload shell with:
   - app title
@@ -112,6 +113,11 @@ Completed:
   - `npm test`
   - `npm run build`
   - `npm run test:e2e`
+- Milestone 6 verification completed successfully with:
+  - `npm run lint`
+  - `npm test`
+  - `npm run build`
+  - `npm run test:e2e`
 
 Implemented files of note:
 - `card-upload-nextjs/src/app/page.tsx`
@@ -143,19 +149,22 @@ Notes:
 - Milestone 2 intentionally stops short of regex-based metadata extraction and transaction-line parsing; those remain Milestone 4 work.
 - CSV generation in the Next.js project currently operates on exported row objects and returns a CSV string, matching the contract planned for the port.
 - Milestone 3 uses a dedicated Web Worker plus `pdfjs-dist` for browser-only extraction.
-- The current extraction preview is a debug summary only; it confirms page text is available but does not yet claim parser parity with the Python implementation.
 - `pdfjs-dist` required `GlobalWorkerOptions.workerSrc` to be set explicitly inside the extraction worker for real browser runs.
 - Milestone 4 required a normalization step that reorders `pdfjs-dist` text items left-to-right within each visual line before parsing.
 - The parser now supports both the original single-line Python-style transaction rows and the multi-line row format produced by browser extraction for the known fixture.
 - Current parity is proven against the known March 2026 sample PDF already in `statements/`; broader fixture coverage can be expanded later if more statement PDFs are added to the repo.
 - Milestone 5 keeps all workflow state in the browser and uses data-URI download links for combined and per-card CSV exports.
 - The current Next.js UI now covers the main Streamlit-equivalent happy path for the known supported fixture PDF.
+- Milestone 6 replaces the raw text debug panel with a user-facing processing summary and explicitly blocks export controls when required statement details are missing.
+- The upload flow now distinguishes extraction failures from parse failures and surfaces incomplete-statement issues directly in the UI.
+- Page and workflow copy now describe the browser app as the current workflow rather than a milestone/debug shell.
 
 Resume from here:
-- Start Milestone 6 next.
-- First task should be hardening the user-facing failure states and removing or reducing remaining debug-oriented UI such as the raw extraction preview if it is no longer needed.
-- Add explicit handling for missing primary card, missing card numbers, no valid transactions found, and extraction/parsing failures in the visible UI.
-- Keep the existing browser-local architecture and extend browser tests to cover the failure paths and final polished flow.
+- Milestone plan is complete.
+- Next recommended work is optional follow-up:
+  - add more real statement fixtures to broaden parser/browser confidence
+  - decide whether the Next.js app should replace the Streamlit app operationally
+  - handle any post-parity deployment or packaging work separately
 
 ## Implementation Plan
 
@@ -349,6 +358,8 @@ Acceptance:
 ### Milestone 6: Hardening, Error Handling, and Release Readiness
 Goal: make the new app safe to rely on without changing scope.
 
+Status: Complete on 6 April 2026
+
 Deliverables:
 - Improve user-facing errors for:
   - unsupported PDFs
@@ -359,16 +370,21 @@ Deliverables:
 - Add loading/progress polish and responsive layout cleanup
 - Remove any temporary debug views
 - Finalize docs and migration notes describing the old app as source-of-truth reference during transition
+- Replace the raw extraction preview with a user-facing processing summary showing extraction and parsing counts
+- Block export controls and detailed transaction sections when parsed statement data is incomplete
 
 Runnable state:
 - app is production-shaped and can be evaluated as the successor to the Python version
 - no debug-only UX remains
+- supported fixture PDFs still complete the full workflow from upload through CSV export
+- incomplete or unsupported statements now show actionable issues instead of exposing unsafe export actions
 
 Tests:
 - browser tests for failure paths and edge states
 - regression suite over all known statement fixtures
 - performance-oriented sanity test for larger PDFs if practical
 - final smoke test covering first load, upload, parse, card switch, and CSV export in one flow
+- component tests for parse failure messaging and incomplete-statement blocking behavior
 
 Acceptance:
 - success and failure paths are both covered

@@ -129,10 +129,12 @@ describe("UploadShell", () => {
     expect(screen.getByText("13 April 2026")).toBeInTheDocument();
     expect(screen.getAllByText("$3,053.10").length).toBeGreaterThan(0);
     expect(screen.getByText(/7248, 8489/i)).toBeInTheDocument();
+    expect(screen.getByText(/browser extraction details/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /download combined csv/i })).toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: "CSV" })).toHaveLength(2);
     expect(screen.getByRole("combobox")).toHaveValue("7248");
     expect(screen.getByText(/show excluded rows \(1\)/i)).toBeInTheDocument();
+    expect(screen.queryByText(/raw page text debug snapshot/i)).not.toBeInTheDocument();
   });
 
   it("switches cards and updates the transaction view", async () => {
@@ -177,6 +179,57 @@ describe("UploadShell", () => {
     await user.upload(fileInput, file);
 
     expect(await screen.findByRole("alert")).toHaveTextContent(/parsed totals do not fully reconcile/i);
+  });
+
+  it("shows a parse failure when extracted text cannot be turned into a supported statement", async () => {
+    extractPdfTextMock.mockResolvedValue({
+      pageTexts: ["Statement period 20/01/26-19/02/26"],
+      fullText: "Statement period 20/01/26-19/02/26",
+    });
+    parseStatementFromExtractionMock.mockImplementation(() => {
+      throw new Error("invalid statement format");
+    });
+
+    render(<UploadShell />);
+    const user = userEvent.setup();
+    const fileInput = screen.getByLabelText(/choose a pdf statement/i);
+    const file = new File(["%PDF-1.4"], "statement.pdf", { type: "application/pdf" });
+
+    await user.upload(fileInput, file);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/parsing failed/i);
+    expect(screen.getByText(/could not be parsed into the supported macquarie format/i)).toBeInTheDocument();
+  });
+
+  it("blocks exports when required statement details are missing", async () => {
+    extractPdfTextMock.mockResolvedValue({
+      pageTexts: ["statement text"],
+      fullText: "statement text",
+    });
+    parseStatementFromExtractionMock.mockReturnValue({
+      ...parsedStatement,
+      metadata: {
+        ...parsedStatement.metadata,
+        primaryCard: null,
+        cardNumbers: [],
+      },
+      transactions: [],
+      cardSummary: [],
+    });
+
+    render(<UploadShell />);
+    const user = userEvent.setup();
+    const fileInput = screen.getByLabelText(/choose a pdf statement/i);
+    const file = new File(["%PDF-1.4"], "statement.pdf", { type: "application/pdf" });
+
+    await user.upload(fileInput, file);
+
+    expect(await screen.findByText(/this statement is not ready for export yet/i)).toBeInTheDocument();
+    expect(screen.getByText(/primary card could not be identified/i)).toBeInTheDocument();
+    expect(screen.getByText(/no card numbers were detected/i)).toBeInTheDocument();
+    expect(screen.getByText(/no valid transactions were found/i)).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /download combined csv/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
   });
 
   it("shows a user-facing error for unsupported files", async () => {

@@ -24,10 +24,10 @@ type ExtractionState =
       status: "success";
       pageCount: number;
       characterCount: number;
-      preview: string;
       parsed: ParsedStatementResult;
+      issues: string[];
     }
-  | { status: "error"; message: string };
+  | { status: "error"; title: string; message: string };
 
 export function UploadShell() {
   const inputId = useId();
@@ -59,13 +59,12 @@ export function UploadShell() {
       }
 
       const parsed = parseStatementFromExtraction(result);
-      const preview = result.pageTexts.find((pageText) => pageText.trim()) ?? "";
       setExtractionState({
         status: "success",
         pageCount: result.pageTexts.length,
         characterCount: result.fullText.length,
-        preview: preview.slice(0, 220),
         parsed,
+        issues: getStatementIssues(parsed),
       });
       setSelectedCard(parsed.metadata.cardNumbers[0] ?? "");
     } catch (error) {
@@ -73,14 +72,21 @@ export function UploadShell() {
         return;
       }
 
-      const message =
+      const extractionError =
         error instanceof PdfExtractionError
-          ? error.message
-          : "The PDF could not be processed in the browser.";
+          ? {
+              title: "Extraction failed",
+              message: error.message,
+            }
+          : {
+              title: "Parsing failed",
+              message:
+                "The PDF text was extracted, but the statement could not be parsed into the supported Macquarie format.",
+            };
 
       setExtractionState({
         status: "error",
-        message,
+        ...extractionError,
       });
       setSelectedCard("");
     }
@@ -93,8 +99,8 @@ export function UploadShell() {
           <p className={styles.panelLabel}>Upload</p>
           <h2>Load a Macquarie Bank credit card statement PDF</h2>
           <p className={styles.panelCopy}>
-            This milestone reproduces the current statement workflow in the browser, from upload
-            through reconciliation and CSV exports.
+            Upload a supported statement to review totals, check reconciliation, and export
+            combined or per-card CSV files directly in the browser.
           </p>
         </div>
 
@@ -140,7 +146,7 @@ export function UploadShell() {
 
       {extractionState.status === "error" ? (
         <div className={styles.errorCard} role="alert">
-          <p className={styles.statusTitle}>Extraction failed</p>
+          <p className={styles.statusTitle}>{extractionState.title}</p>
           <p className={styles.statusCopy}>{extractionState.message}</p>
         </div>
       ) : null}
@@ -161,24 +167,26 @@ function getResultsTitle(extractionState: ExtractionState): string {
     case "idle":
       return "Waiting for parsed statement data";
     case "loading":
-      return "Extracting raw PDF text";
+      return "Reading statement PDF";
     case "success":
-      return "Statement ready";
+      return extractionState.issues.length === 0 ? "Statement ready" : "Statement needs review";
     case "error":
-      return "PDF extraction needs attention";
+      return "Statement processing needs attention";
   }
 }
 
 function getResultsCopy(extractionState: ExtractionState): string {
   switch (extractionState.status) {
     case "idle":
-      return "Summary, reconciliation, and CSV download panels remain hidden until parsing is implemented.";
+      return "Upload a supported Macquarie Bank statement PDF to review totals and export CSV files.";
     case "loading":
-      return "The upload is being processed in-browser. Parser rules are still not applied at this stage.";
+      return "The file is being processed in-browser so statement data never leaves the device.";
     case "success":
-      return "The app can now parse supported statement PDFs and expose the current export workflow entirely in the browser.";
+      return extractionState.issues.length === 0
+        ? "The statement parsed successfully and the current CSV export workflow is ready."
+        : "The file opened, but some required statement details were missing or incomplete.";
     case "error":
-      return "The upload reached the extraction layer, but the browser could not return usable PDF text.";
+      return "The uploaded file could not be fully turned into a supported statement view.";
   }
 }
 
@@ -203,6 +211,7 @@ function SuccessfulStatementView({
   onSelectedCardChange: (card: string) => void;
 }) {
   const { parsed } = extractionState;
+  const isCompleteStatement = extractionState.issues.length === 0;
   const combinedTransactions = parsed.transactions.filter((transaction) => !transaction.isPayment);
   const hasReconciliationMismatch = parsed.reconciliationRows.some(
     (row) => row.delta !== null && row.delta !== 0,
@@ -224,15 +233,19 @@ function SuccessfulStatementView({
         <div className={styles.sectionHeader}>
           <div>
             <p className={styles.panelLabel}>Statement Summary</p>
-            <h3 className={styles.sectionTitle}>Parsed statement ready</h3>
+            <h3 className={styles.sectionTitle}>
+              {isCompleteStatement ? "Parsed statement ready" : "Statement extracted with gaps"}
+            </h3>
           </div>
-          <a
-            className={styles.downloadButton}
-            href={combinedCsvHref}
-            download="credit_card_all_transactions.csv"
-          >
-            Download Combined CSV
-          </a>
+          {isCompleteStatement ? (
+            <a
+              className={styles.downloadButton}
+              href={combinedCsvHref}
+              download="credit_card_all_transactions.csv"
+            >
+              Download Combined CSV
+            </a>
+          ) : null}
         </div>
         <div className={styles.metrics}>
           <Metric label="Closing balance" value={formatCurrency(parsed.metadata.closingBalance)} />
@@ -243,6 +256,16 @@ function SuccessfulStatementView({
           />
           <Metric label="Cards" value={parsed.metadata.cardNumbers.join(", ") || "-"} small />
         </div>
+        {extractionState.issues.length > 0 ? (
+          <div className={styles.warningCard} role="alert">
+            <p className={styles.noticeTitle}>This statement is not ready for export yet.</p>
+            <ul className={styles.issueList}>
+              {extractionState.issues.map((issue) => (
+                <li key={issue}>{issue}</li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
         {hasReconciliationMismatch ? (
           <div className={styles.warningCard} role="alert">
             Parsed totals do not fully reconcile with the statement summary. Review the
@@ -254,95 +277,113 @@ function SuccessfulStatementView({
       <section className={styles.summaryCard}>
         <div className={styles.sectionHeader}>
           <div>
-            <p className={styles.panelLabel}>Per-Card Summary</p>
-            <h3 className={styles.sectionTitle}>Card totals and exports</h3>
-          </div>
-        </div>
-        <CardSummaryTable cardSummary={parsed.cardSummary} parsed={parsed} />
-      </section>
-
-      <section className={styles.summaryCard}>
-        <div className={styles.sectionHeader}>
-          <div>
-            <p className={styles.panelLabel}>Reconciliation</p>
-            <h3 className={styles.sectionTitle}>Statement vs parsed totals</h3>
-          </div>
-        </div>
-        <ReconciliationTable rows={parsed.reconciliationRows} />
-      </section>
-
-      <section className={styles.summaryCard}>
-        <div className={styles.sectionHeader}>
-          <div>
-            <p className={styles.panelLabel}>Transactions</p>
-            <h3 className={styles.sectionTitle}>Card-level transaction view</h3>
-          </div>
-          <label className={styles.selector}>
-            <span className={styles.selectorLabel}>Card ending</span>
-            <select
-              value={selectedCard}
-              onChange={(event) => onSelectedCardChange(event.target.value)}
-              className={styles.select}
-            >
-              {parsed.metadata.cardNumbers.map((card) => (
-                <option key={card} value={card}>
-                  {card}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-
-        {selectedCard ? (
-          <>
-            <div className={styles.metrics}>
-              <Metric
-                label={`Transactions for ${selectedCard}`}
-                value={String(cardTransactions.length)}
-              />
-              <Metric label="Total (AUD)" value={formatCurrency(cardTotal)} />
-            </div>
-
-            {cardTransactions.length > 0 ? (
-              <TransactionsTable transactions={cardTransactions} />
-            ) : (
-              <p className={styles.statusCopy}>
-                No valid transactions found for card ending in {selectedCard}.
-              </p>
-            )}
-
-            {excludedTransactions.length > 0 ? (
-              <details className={styles.auditBlock}>
-                <summary className={styles.auditSummary}>
-                  Show excluded rows ({excludedTransactions.length})
-                </summary>
-                <TransactionsTable transactions={excludedTransactions} excluded />
-              </details>
-            ) : null}
-          </>
-        ) : null}
-      </section>
-
-      <section className={styles.summaryCard}>
-        <div className={styles.sectionHeader}>
-          <div>
-            <p className={styles.panelLabel}>Extraction Preview</p>
-            <h3 className={styles.sectionTitle}>Raw page text debug snapshot</h3>
+            <p className={styles.panelLabel}>Processing Summary</p>
+            <h3 className={styles.sectionTitle}>Browser extraction details</h3>
           </div>
         </div>
         <div className={styles.metrics}>
           <Metric label="Pages" value={String(extractionState.pageCount)} />
           <Metric label="Characters" value={extractionState.characterCount.toLocaleString()} />
-        </div>
-        <div className={styles.previewBlock}>
-          <p className={styles.previewLabel}>First extracted text preview</p>
-          <pre className={styles.previewText}>
-            {extractionState.preview || "No text was extracted from the first available page."}
-          </pre>
+          <Metric label="Transactions parsed" value={String(parsed.transactions.length)} />
+          <Metric label="Exportable rows" value={String(combinedTransactions.length)} />
         </div>
       </section>
+
+      {isCompleteStatement ? (
+        <>
+          <section className={styles.summaryCard}>
+            <div className={styles.sectionHeader}>
+              <div>
+                <p className={styles.panelLabel}>Per-Card Summary</p>
+                <h3 className={styles.sectionTitle}>Card totals and exports</h3>
+              </div>
+            </div>
+            <CardSummaryTable cardSummary={parsed.cardSummary} parsed={parsed} />
+          </section>
+
+          <section className={styles.summaryCard}>
+            <div className={styles.sectionHeader}>
+              <div>
+                <p className={styles.panelLabel}>Reconciliation</p>
+                <h3 className={styles.sectionTitle}>Statement vs parsed totals</h3>
+              </div>
+            </div>
+            <ReconciliationTable rows={parsed.reconciliationRows} />
+          </section>
+
+          <section className={styles.summaryCard}>
+            <div className={styles.sectionHeader}>
+              <div>
+                <p className={styles.panelLabel}>Transactions</p>
+                <h3 className={styles.sectionTitle}>Card-level transaction view</h3>
+              </div>
+              <label className={styles.selector}>
+                <span className={styles.selectorLabel}>Card ending</span>
+                <select
+                  value={selectedCard}
+                  onChange={(event) => onSelectedCardChange(event.target.value)}
+                  className={styles.select}
+                >
+                  {parsed.metadata.cardNumbers.map((card) => (
+                    <option key={card} value={card}>
+                      {card}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            {selectedCard ? (
+              <>
+                <div className={styles.metrics}>
+                  <Metric
+                    label={`Transactions for ${selectedCard}`}
+                    value={String(cardTransactions.length)}
+                  />
+                  <Metric label="Total (AUD)" value={formatCurrency(cardTotal)} />
+                </div>
+
+                {cardTransactions.length > 0 ? (
+                  <TransactionsTable transactions={cardTransactions} />
+                ) : (
+                  <p className={styles.statusCopy}>
+                    No valid transactions found for card ending in {selectedCard}.
+                  </p>
+                )}
+
+                {excludedTransactions.length > 0 ? (
+                  <details className={styles.auditBlock}>
+                    <summary className={styles.auditSummary}>
+                      Show excluded rows ({excludedTransactions.length})
+                    </summary>
+                    <TransactionsTable transactions={excludedTransactions} excluded />
+                  </details>
+                ) : null}
+              </>
+            ) : null}
+          </section>
+        </>
+      ) : null}
     </div>
   );
+}
+
+function getStatementIssues(parsed: ParsedStatementResult): string[] {
+  const issues: string[] = [];
+
+  if (!parsed.metadata.primaryCard) {
+    issues.push("Primary card could not be identified from the statement header.");
+  }
+
+  if (parsed.metadata.cardNumbers.length === 0) {
+    issues.push("No card numbers were detected in the statement.");
+  }
+
+  if (parsed.transactions.length === 0) {
+    issues.push("No valid transactions were found in the statement activity pages.");
+  }
+
+  return issues;
 }
 
 function Metric({ label, value, small = false }: { label: string; value: string; small?: boolean }) {

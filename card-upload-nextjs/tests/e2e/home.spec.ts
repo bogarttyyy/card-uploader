@@ -24,6 +24,7 @@ test("shows an error for a non-pdf upload", async ({ page }) => {
   await expect(
     page.getByText("Please upload a PDF statement. Other file types are not supported."),
   ).toBeVisible();
+  await expect(page.getByRole("link", { name: /download combined csv/i })).toHaveCount(0);
 });
 
 test("extracts text from the fixture pdf", async ({ page }) => {
@@ -37,9 +38,11 @@ test("extracts text from the fixture pdf", async ({ page }) => {
   await page.getByLabel("Choose a PDF statement").setInputFiles(fixturePath);
 
   await expect(page.getByRole("link", { name: /download combined csv/i })).toBeVisible();
+  await expect(page.getByText("Browser extraction details")).toBeVisible();
   await expect(page.getByText("13 April 2026")).toBeVisible();
   await expect(page.getByText("$3,053.10").first()).toBeVisible();
   await expect(page.getByText("7248, 8489")).toBeVisible();
+  await expect(page.getByText(/raw page text debug snapshot/i)).toHaveCount(0);
   await expect(page.getByRole("combobox")).toHaveValue("7248");
   await page.getByRole("combobox").selectOption("8489");
   await expect(page.getByRole("combobox")).toHaveValue("8489");
