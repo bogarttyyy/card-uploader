@@ -7,7 +7,7 @@ describe("Home page", () => {
 
     expect(
       screen.getByRole("heading", {
-        name: /credit card statements, without the streamlit runtime\./i,
+        name: /credit card statements, parsed directly in the browser\./i,
       }),
     ).toBeInTheDocument();
     expect(

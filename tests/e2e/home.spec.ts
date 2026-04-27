@@ -6,7 +6,7 @@ test("loads the upload shell", async ({ page }) => {
 
   await expect(
     page.getByRole("heading", {
-      name: /credit card statements, without the streamlit runtime\./i,
+      name: /credit card statements, parsed directly in the browser\./i,
     }),
   ).toBeVisible();
   await expect(page.getByLabel("Choose a PDF statement")).toBeVisible();
@@ -32,7 +32,7 @@ test("extracts text from the fixture pdf", async ({ page }) => {
 
   const fixturePath = path.resolve(
     process.cwd(),
-    "../statements/Statement_CRD9c58559b0ebf4c5a8d313f114865af1dd5032a0356e926bd83.pdf",
+    "statements/Statement_CRD9c58559b0ebf4c5a8d313f114865af1dd5032a0356e926bd83.pdf",
   );
 
   await page.getByLabel("Choose a PDF statement").setInputFiles(fixturePath);
