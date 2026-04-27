@@ -11,12 +11,12 @@ export default function Home() {
   return (
     <main className={styles.page}>
       <section className={styles.hero}>
-        <p className={styles.eyebrow}>Milestone 6</p>
-        <h1>Credit card statements, without the Streamlit runtime.</h1>
+        <p className={styles.eyebrow}>Browser Workflow</p>
+        <h1>Credit card statements, parsed directly in the browser.</h1>
         <p className={styles.lead}>
-          This Next.js app now runs the statement workflow fully in the browser: PDF extraction,
-          parser-based reconciliation, per-card review, and CSV exports for supported Macquarie
-          credit card statements.
+          Upload a supported Macquarie Bank statement to extract transactions, review
+          reconciliation, and export per-card or combined CSV files without sending the PDF to a
+          backend service.
         </p>
       </section>
 

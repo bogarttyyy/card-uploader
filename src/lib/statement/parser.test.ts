@@ -62,7 +62,7 @@ Continued over page..`,
     const bytes = readFileSync(
       path.resolve(
         process.cwd(),
-        "../statements/Statement_CRD9c58559b0ebf4c5a8d313f114865af1dd5032a0356e926bd83.pdf",
+        "statements/Statement_CRD9c58559b0ebf4c5a8d313f114865af1dd5032a0356e926bd83.pdf",
       ),
     );
     const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
@@ -92,7 +92,7 @@ Continued over page..`,
     const bytes = readFileSync(
       path.resolve(
         process.cwd(),
-        "../statements/Statement_CRD9c58559b0ebf4c5a8d313f114865af1dd5032a0356e926bd83.pdf",
+        "statements/Statement_CRD9c58559b0ebf4c5a8d313f114865af1dd5032a0356e926bd83.pdf",
       ),
     );
     const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);

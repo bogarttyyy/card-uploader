@@ -1,7 +1,10 @@
 {
-  "name": "card-upload-nextjs",
+  "name": "card-uploader",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=22 <26"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
