@@ -81,7 +81,7 @@ export function UploadShell() {
           : {
               title: "Parsing failed",
               message:
-                "The PDF text was extracted, but the statement could not be parsed into the supported Macquarie format.",
+                "The PDF text was extracted, but the statement could not be parsed into the supported format.",
             };
 
       setExtractionState({
@@ -97,7 +97,7 @@ export function UploadShell() {
       <div className={styles.panel}>
         <div className={styles.panelHeader}>
           <p className={styles.panelLabel}>Upload</p>
-          <h2>Load a Macquarie Bank credit card statement PDF</h2>
+          <h2>Load a credit card statement PDF</h2>
           <p className={styles.panelCopy}>
             Upload a supported statement to review totals, check reconciliation, and export
             combined or per-card CSV files directly in the browser.
@@ -178,7 +178,7 @@ function getResultsTitle(extractionState: ExtractionState): string {
 function getResultsCopy(extractionState: ExtractionState): string {
   switch (extractionState.status) {
     case "idle":
-      return "Upload a supported Macquarie Bank statement PDF to review totals and export CSV files.";
+      return "Upload a supported statement PDF to review totals and export CSV files.";
     case "loading":
       return "The file is being processed in-browser so statement data never leaves the device.";
     case "success":
