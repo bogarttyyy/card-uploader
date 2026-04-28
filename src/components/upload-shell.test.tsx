@@ -198,7 +198,7 @@ describe("UploadShell", () => {
     await user.upload(fileInput, file);
 
     expect(await screen.findByRole("alert")).toHaveTextContent(/parsing failed/i);
-    expect(screen.getByText(/could not be parsed into the supported macquarie format/i)).toBeInTheDocument();
+    expect(screen.getByText(/could not be parsed into the supported format/i)).toBeInTheDocument();
   });
 
   it("blocks exports when required statement details are missing", async () => {

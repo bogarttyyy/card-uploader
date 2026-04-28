@@ -4,7 +4,7 @@ import { UploadShell } from "@/components/upload-shell";
 
 export const metadata: Metadata = {
   title: "Card Upload",
-  description: "Browser-based Macquarie credit card statement parser and CSV exporter.",
+  description: "Browser-based credit card statement parser and CSV exporter.",
 };
 
 export default function Home() {
@@ -14,7 +14,7 @@ export default function Home() {
         <p className={styles.eyebrow}>Browser Workflow</p>
         <h1>Credit card statements, parsed directly in the browser.</h1>
         <p className={styles.lead}>
-          Upload a supported Macquarie Bank statement to extract transactions, review
+          Upload a supported CC statement to extract transactions, review
           reconciliation, and export per-card or combined CSV files without sending the PDF to a
           backend service.
         </p>
