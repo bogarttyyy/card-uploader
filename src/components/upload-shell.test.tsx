@@ -110,12 +110,12 @@ describe("UploadShell", () => {
 
     render(<UploadShell />);
     const user = userEvent.setup();
-    const fileInput = screen.getByLabelText(/choose a pdf statement/i);
+    const fileInput = screen.getByLabelText(/select pdf file/i);
     const file = new File(["%PDF-1.4"], "statement.pdf", { type: "application/pdf" });
 
     await user.upload(fileInput, file);
 
-    expect(await screen.findByRole("status")).toHaveTextContent(/extracting text from pdf/i);
+    expect(await screen.findByRole("status")).toHaveTextContent(/parsing transactions/i);
 
     parseStatementFromExtractionMock.mockReturnValue(parsedStatement);
 
@@ -128,8 +128,9 @@ describe("UploadShell", () => {
 
     expect(screen.getByText("13 April 2026")).toBeInTheDocument();
     expect(screen.getAllByText("$3,053.10").length).toBeGreaterThan(0);
-    expect(screen.getByText(/7248, 8489/i)).toBeInTheDocument();
-    expect(screen.getByText(/browser extraction details/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/•••• 7248/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/•••• 8489/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Statement Details/i).length).toBeGreaterThan(0);
     expect(screen.getByRole("link", { name: /download combined csv/i })).toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: "CSV" })).toHaveLength(2);
     expect(screen.getByRole("combobox")).toHaveValue("7248");
@@ -146,7 +147,7 @@ describe("UploadShell", () => {
 
     render(<UploadShell />);
     const user = userEvent.setup();
-    const fileInput = screen.getByLabelText(/choose a pdf statement/i);
+    const fileInput = screen.getByLabelText(/select pdf file/i);
     const file = new File(["%PDF-1.4"], "statement.pdf", { type: "application/pdf" });
 
     await user.upload(fileInput, file);
@@ -155,7 +156,7 @@ describe("UploadShell", () => {
     await user.selectOptions(screen.getByRole("combobox"), "8489");
 
     expect(screen.getByRole("combobox")).toHaveValue("8489");
-    expect(screen.getByText("eBay O*20-14219-98730 Sydney")).toBeInTheDocument();
+    expect(screen.getAllByText("eBay O*20-14219-98730 Sydney").length).toBeGreaterThan(0);
     expect(screen.queryByText(/show excluded rows \(1\)/i)).not.toBeInTheDocument();
   });
 
@@ -173,7 +174,7 @@ describe("UploadShell", () => {
 
     render(<UploadShell />);
     const user = userEvent.setup();
-    const fileInput = screen.getByLabelText(/choose a pdf statement/i);
+    const fileInput = screen.getByLabelText(/select pdf file/i);
     const file = new File(["%PDF-1.4"], "statement.pdf", { type: "application/pdf" });
 
     await user.upload(fileInput, file);
@@ -192,7 +193,7 @@ describe("UploadShell", () => {
 
     render(<UploadShell />);
     const user = userEvent.setup();
-    const fileInput = screen.getByLabelText(/choose a pdf statement/i);
+    const fileInput = screen.getByLabelText(/select pdf file/i);
     const file = new File(["%PDF-1.4"], "statement.pdf", { type: "application/pdf" });
 
     await user.upload(fileInput, file);
@@ -219,7 +220,7 @@ describe("UploadShell", () => {
 
     render(<UploadShell />);
     const user = userEvent.setup();
-    const fileInput = screen.getByLabelText(/choose a pdf statement/i);
+    const fileInput = screen.getByLabelText(/select pdf file/i);
     const file = new File(["%PDF-1.4"], "statement.pdf", { type: "application/pdf" });
 
     await user.upload(fileInput, file);
@@ -242,7 +243,7 @@ describe("UploadShell", () => {
 
     render(<UploadShell />);
     const user = userEvent.setup({ applyAccept: false });
-    const fileInput = screen.getByLabelText(/choose a pdf statement/i);
+    const fileInput = screen.getByLabelText(/select pdf file/i);
     const file = new File(["plain text"], "notes.txt", { type: "text/plain" });
 
     await user.upload(fileInput, file);

@@ -7,14 +7,14 @@ describe("Home page", () => {
 
     expect(
       screen.getByRole("heading", {
-        name: /credit card statements, parsed directly in the browser\./i,
+        name: /upload your credit card statement/i,
       }),
     ).toBeInTheDocument();
     expect(
-      screen.getByLabelText(/choose a pdf statement/i),
+      screen.getByLabelText(/select pdf file/i),
     ).toHaveAttribute("accept", ".pdf");
     expect(
-      screen.getByText(/waiting for parsed statement data/i),
+      screen.getByText(/analysis summary/i),
     ).toBeInTheDocument();
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
   });

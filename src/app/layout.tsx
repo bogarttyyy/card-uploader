@@ -1,9 +1,22 @@
 import type { Metadata } from "next";
+import { Montserrat, Open_Sans } from "next/font/google";
 import "./globals.css";
 
+const montserrat = Montserrat({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-heading",
+});
+
+const openSans = Open_Sans({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-body",
+});
+
 export const metadata: Metadata = {
-  title: "Card Upload",
-  description: "Next.js port in progress for the credit card PDF to CSV converter.",
+  title: "Pampi Card",
+  description: "Browser-based credit card statement parser and CSV exporter.",
   icons: {
     icon: [
       { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
@@ -21,7 +34,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${montserrat.variable} ${openSans.variable}`}>
       <body>{children}</body>
     </html>
   );
