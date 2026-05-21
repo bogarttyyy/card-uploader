@@ -45,11 +45,30 @@ test("extracts text from the fixture pdf", async ({ page }) => {
   await expect(page.getByText("•••• 8489").filter({ visible: true }).first()).toBeVisible();
   await expect(page.getByText(/raw page text debug snapshot/i)).toHaveCount(0);
   await expect(page.getByRole("combobox")).toHaveValue("7248");
+  await expect(
+    page.getByText("OPENAI *CHATGPT SUBSCR OPENAI.COM CA").filter({ visible: true }),
+  ).toHaveCount(0);
+
+  const tableScroller = page.locator('[class*="resultsTableWrap"]').first();
+  await expect(tableScroller).toBeVisible();
+  await expect
+    .poll(async () =>
+      tableScroller.evaluate(
+        (element) =>
+          getComputedStyle(element).overflowY === "auto" &&
+          element.scrollHeight > element.clientHeight,
+      ),
+    )
+    .toBe(true);
+
   await page.getByRole("combobox").selectOption("8489");
   await expect(page.getByRole("combobox")).toHaveValue("8489");
   await expect(
     page.getByText("OPENAI *CHATGPT SUBSCR OPENAI.COM CA").filter({ visible: true }).first(),
   ).toBeVisible();
+  await expect(
+    page.getByText("AAMI  INSURANCE AUSTRALIA").filter({ visible: true }),
+  ).toHaveCount(0);
 });
 
 test("shows mobile stacked results and sticky CSV action", async ({ page }) => {
@@ -67,6 +86,22 @@ test("shows mobile stacked results and sticky CSV action", async ({ page }) => {
   await expect(page.getByText("Total Spend")).toBeVisible();
   await expect(page.getByRole("link", { name: /download summary csv/i })).toBeVisible();
   await expect(
-    page.getByText("OPENAI *CHATGPT SUBSCR OPENAI.COM CA").filter({ visible: true }).first(),
+    page.getByText("AMAZON MARKETPLACE AU SYDNEY").filter({ visible: true }).first(),
   ).toBeVisible();
+
+  const transactionList = page.locator('[class*="transactionList"]').first();
+  await expect(transactionList).toBeVisible();
+  await expect
+    .poll(async () =>
+      transactionList.evaluate(
+        (element) =>
+          getComputedStyle(element).overflowY === "auto" &&
+          element.scrollHeight > element.clientHeight,
+      ),
+    )
+    .toBe(true);
+
+  const stickyAction = page.locator('[class*="stickyAction"]').first();
+  await expect(stickyAction).toBeVisible();
+  await expect(stickyAction).toHaveCSS("position", "sticky");
 });

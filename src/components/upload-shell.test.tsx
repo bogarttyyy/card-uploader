@@ -116,6 +116,9 @@ describe("UploadShell", () => {
     await user.upload(fileInput, file);
 
     expect(await screen.findByRole("status")).toHaveTextContent(/parsing transactions/i);
+    expect(fileInput.closest("section")).toHaveAttribute("data-compact-upload", "true");
+    expect(screen.getByRole("heading", { name: /replace credit card statement/i })).toBeInTheDocument();
+    expect(screen.getByText(/drop another pdf/i)).toBeInTheDocument();
 
     parseStatementFromExtractionMock.mockReturnValue(parsedStatement);
 
@@ -153,10 +156,15 @@ describe("UploadShell", () => {
     await user.upload(fileInput, file);
 
     await screen.findByRole("link", { name: /download combined csv/i });
+    expect(screen.getAllByText("Amazon").length).toBeGreaterThan(0);
+    expect(screen.queryByText("eBay O*20-14219-98730 Sydney")).not.toBeInTheDocument();
+
     await user.selectOptions(screen.getByRole("combobox"), "8489");
 
     expect(screen.getByRole("combobox")).toHaveValue("8489");
+    expect(screen.getByText("Transactions for 8489")).toBeInTheDocument();
     expect(screen.getAllByText("eBay O*20-14219-98730 Sydney").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Amazon")).not.toBeInTheDocument();
     expect(screen.queryByText(/show excluded rows \(1\)/i)).not.toBeInTheDocument();
   });
 

@@ -51,6 +51,7 @@ export function UploadShell() {
   const [extractionState, setExtractionState] = useState<ExtractionState>({ status: "idle" });
   const [selectedCard, setSelectedCard] = useState<string>("");
   const [isDragging, setIsDragging] = useState(false);
+  const hasSelectedFile = selectedFileName !== null;
 
   async function processFile(file: File) {
     const requestId = requestIdRef.current + 1;
@@ -141,7 +142,10 @@ export function UploadShell() {
 
       <main className={styles.main}>
         <section
-          className={`${styles.uploadZone} ${isDragging ? styles.uploadZoneActive : ""}`}
+          className={`${styles.uploadZone} ${hasSelectedFile ? styles.uploadZoneCompact : ""} ${
+            isDragging ? styles.uploadZoneActive : ""
+          }`}
+          data-compact-upload={hasSelectedFile ? "true" : undefined}
           aria-labelledby={`${inputId}-title`}
         >
           <label
@@ -158,13 +162,16 @@ export function UploadShell() {
               <img src="/icons/ui/upload.svg" alt="" />
             </span>
             <h1 className={styles.uploadTitle} id={`${inputId}-title`}>
-              Upload your credit card statement
+              {hasSelectedFile ? "Replace credit card statement" : "Upload your credit card statement"}
             </h1>
             <span className={styles.uploadCopy}>
-              Drag and drop your PDF file here, or choose a local statement to parse in this
-              browser.
+              {hasSelectedFile
+                ? "Drop another PDF or choose a local statement to parse again in this browser."
+                : "Drag and drop your PDF file here, or choose a local statement to parse in this browser."}
             </span>
-            <span className={styles.primaryButton}>Select PDF File</span>
+            <span className={styles.primaryButton}>
+              {hasSelectedFile ? "Choose Replacement PDF" : "Select PDF File"}
+            </span>
             <span className={styles.localCheck}>
               <span className={styles.checkIcon}>
                 <img src="/icons/ui/check.svg" alt="" />
@@ -416,8 +423,8 @@ function SuccessfulStatementView({
                 <Metric label="Characters" value={extractionState.characterCount.toLocaleString()} />
               </div>
 
-              <TransactionsTable transactions={view.transactions} />
-              <TransactionsList transactions={view.transactions} />
+              <TransactionsTable transactions={cardTransactions} />
+              <TransactionsList transactions={cardTransactions} />
 
               {excludedTransactions.length > 0 ? (
                 <details className={styles.auditBlock}>
@@ -631,8 +638,8 @@ function TransactionsTable({
   excluded?: boolean;
 }) {
   return (
-    <div className={styles.tableCard}>
-      <div className={styles.tableWrap}>
+    <div className={`${styles.tableCard} ${excluded ? "" : styles.resultsTableCard}`}>
+      <div className={`${styles.tableWrap} ${excluded ? "" : styles.resultsTableWrap}`}>
         <table className={styles.table}>
           <thead>
             <tr>
@@ -662,7 +669,7 @@ function TransactionsTable({
         </table>
       </div>
       <div className={styles.tableFooter}>
-        Showing {transactions.length} transactions detected in statement
+        Showing {transactions.length} transactions detected for this card
       </div>
     </div>
   );
