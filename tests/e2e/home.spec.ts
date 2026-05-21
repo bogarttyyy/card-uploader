@@ -32,15 +32,15 @@ test("extracts text from the fixture pdf", async ({ page }) => {
 
   const fixturePath = path.resolve(
     process.cwd(),
-    "statements/Statement_CRD9c58559b0ebf4c5a8d313f114865af1dd5032a0356e926bd83.pdf",
+    "statements/Statement_CRDd8abc3f468af07377c2867bd15418f734afeca244f8b9e685d.pdf",
   );
 
   await page.getByLabel(/select pdf file/i).setInputFiles(fixturePath);
 
   await expect(page.getByRole("link", { name: /download combined csv/i })).toBeVisible();
   await expect(page.getByText("Statement Details").first()).toBeVisible();
-  await expect(page.getByText("13 April 2026")).toBeVisible();
-  await expect(page.getByText("$3,053.10").filter({ visible: true }).first()).toBeVisible();
+  await expect(page.getByText("15 May 2026")).toBeVisible();
+  await expect(page.getByText("$5,323.21").filter({ visible: true }).first()).toBeVisible();
   await expect(page.getByText("•••• 7248").filter({ visible: true }).first()).toBeVisible();
   await expect(page.getByText("•••• 8489").filter({ visible: true }).first()).toBeVisible();
   await expect(page.getByText(/raw page text debug snapshot/i)).toHaveCount(0);
@@ -69,39 +69,4 @@ test("extracts text from the fixture pdf", async ({ page }) => {
   await expect(
     page.getByText("AAMI  INSURANCE AUSTRALIA").filter({ visible: true }),
   ).toHaveCount(0);
-});
-
-test("shows mobile stacked results and sticky CSV action", async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/");
-
-  const fixturePath = path.resolve(
-    process.cwd(),
-    "statements/Statement_CRD9c58559b0ebf4c5a8d313f114865af1dd5032a0356e926bd83.pdf",
-  );
-
-  await page.getByLabel(/select pdf file/i).setInputFiles(fixturePath);
-
-  await expect(page.getByText("Analysis Summary")).toBeVisible();
-  await expect(page.getByText("Total Spend")).toBeVisible();
-  await expect(page.getByRole("link", { name: /download summary csv/i })).toBeVisible();
-  await expect(
-    page.getByText("AMAZON MARKETPLACE AU SYDNEY").filter({ visible: true }).first(),
-  ).toBeVisible();
-
-  const transactionList = page.locator('[class*="transactionList"]').first();
-  await expect(transactionList).toBeVisible();
-  await expect
-    .poll(async () =>
-      transactionList.evaluate(
-        (element) =>
-          getComputedStyle(element).overflowY === "auto" &&
-          element.scrollHeight > element.clientHeight,
-      ),
-    )
-    .toBe(true);
-
-  const stickyAction = page.locator('[class*="stickyAction"]').first();
-  await expect(stickyAction).toBeVisible();
-  await expect(stickyAction).toHaveCSS("position", "sticky");
 });
