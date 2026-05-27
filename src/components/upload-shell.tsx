@@ -4,6 +4,7 @@
 
 import { useId, useRef, useState } from "react";
 import styles from "./upload-shell.module.css";
+import { ThemeToggle } from "./theme-toggle";
 import { getAcceptedFileTypes, isPdfFileName } from "@/lib/files";
 import { PdfExtractionError, extractPdfText } from "@/lib/pdf-extraction";
 import {
@@ -134,9 +135,12 @@ export function UploadShell() {
           <span>Pampi Card</span>
         </div>
         <p className={styles.headerCopy}>Parse credit card statements in your browser.</p>
-        <div className={styles.clientBadge}>
-          <img src="/android-chrome-192x192.png" alt="" />
-          <span>Client-side Only</span>
+        <div className={styles.headerActions}>
+          <ThemeToggle />
+          <div className={styles.clientBadge}>
+            <img src="/android-chrome-192x192.png" alt="" />
+            <span>Client-side Only</span>
+          </div>
         </div>
       </header>
 
