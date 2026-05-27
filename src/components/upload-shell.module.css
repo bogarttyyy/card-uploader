@@ -1,7 +1,7 @@
 .appShell {
   min-height: 100vh;
-  background: #ffffff;
-  color: #1e2024;
+  background: var(--background);
+  color: var(--foreground);
 }
 
 .header {
@@ -13,8 +13,8 @@
   justify-content: space-between;
   gap: 1.5rem;
   height: 72px;
-  border-bottom: 1px solid #dedfe3;
-  background: rgba(255, 255, 255, 0.76);
+  border-bottom: 1px solid var(--border);
+  background: var(--header-bg);
   backdrop-filter: blur(10px);
   padding: 0 2rem;
 }
@@ -34,7 +34,7 @@
 
 .brand {
   gap: 0.75rem;
-  color: #1f8cf9;
+  color: var(--accent);
   font-family: var(--font-heading);
   font-size: 1.45rem;
   font-weight: 800;
@@ -47,7 +47,7 @@
   width: 2.25rem;
   height: 2.25rem;
   border-radius: 50%;
-  background: #1f8cf9;
+  background: var(--accent);
   overflow: hidden;
 }
 
@@ -57,17 +57,17 @@
 }
 
 .headerCopy {
-  color: #5a5f68;
+  color: var(--foreground-muted);
   font-size: 0.9rem;
   font-weight: 600;
 }
 
 .clientBadge {
   gap: 0.45rem;
-  border: 1px solid rgba(31, 140, 249, 0.22);
+  border: 1px solid var(--accent-border);
   border-radius: 999px;
-  background: rgba(240, 247, 255, 0.54);
-  color: #1f8cf9;
+  background: var(--accent-lighter);
+  color: var(--accent);
   padding: 0.35rem 0.75rem;
   font-size: 0.68rem;
   font-weight: 800;
@@ -89,13 +89,18 @@
 
 .uploadZone {
   border-radius: 0.75rem;
-  background: rgba(240, 247, 255, 0.3);
+  background: var(--accent-lighter);
   box-shadow: 0 4px 8px rgba(121, 125, 134, 0.09);
   background-image: url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' rx='12' ry='12' stroke='%231F8CF94D' stroke-width='2' stroke-dasharray='8%2c 12' stroke-dashoffset='0' stroke-linecap='square'/%3e%3c/svg%3e");
 }
 
+:global(.dark) .uploadZone {
+  background-image: url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' rx='12' ry='12' stroke='%233B9EFF4D' stroke-width='2' stroke-dasharray='8%2c 12' stroke-dashoffset='0' stroke-linecap='square'/%3e%3c/svg%3e");
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
 .uploadZoneActive {
-  background-color: rgba(31, 140, 249, 0.08);
+  background-color: var(--accent-light);
 }
 
 .dropzone {
@@ -117,7 +122,7 @@
   width: 5rem;
   height: 5rem;
   border-radius: 50%;
-  background: rgba(31, 140, 249, 0.1);
+  background: var(--accent-light);
   margin-bottom: 1.5rem;
 }
 
@@ -138,7 +143,7 @@
 }
 
 .uploadTitle {
-  color: #1e2024;
+  color: var(--foreground);
   font-family: var(--font-heading);
   font-size: 1.9rem;
   font-weight: 800;
@@ -151,7 +156,7 @@
 
 .uploadCopy {
   max-width: 31rem;
-  color: #5a5f68;
+  color: var(--foreground-muted);
   font-size: 0.96rem;
   line-height: 1.55;
   margin-top: 0.8rem;
@@ -172,11 +177,17 @@
   justify-content: center;
   gap: 0.5rem;
   border-radius: 0.5rem;
-  background: #1f8cf9;
+  background: var(--accent);
   color: #ffffff;
   font-size: 0.9rem;
   font-weight: 800;
   box-shadow: 0 8px 16px rgba(31, 140, 249, 0.2);
+}
+
+:global(.dark) .primaryButton,
+:global(.dark) .downloadButton,
+:global(.dark) .stickyButton {
+  box-shadow: 0 8px 16px rgba(59, 158, 255, 0.25);
 }
 
 .primaryButton {
@@ -193,7 +204,7 @@
 .localCheck {
   gap: 0.5rem;
   margin-top: 1.45rem;
-  color: #1e2024;
+  color: var(--foreground);
   font-size: 0.9rem;
   font-weight: 700;
 }
@@ -209,7 +220,7 @@
   width: 1rem;
   height: 1rem;
   border-radius: 0.2rem;
-  background: #1f8cf9;
+  background: var(--accent);
 }
 
 .checkIcon img,
@@ -228,7 +239,7 @@
 
 .fileHint {
   min-height: 1.4rem;
-  color: #5a5f68;
+  color: var(--foreground-muted);
   font-size: 0.82rem;
   font-weight: 600;
   text-align: center;
@@ -244,12 +255,16 @@
   grid-template-columns: minmax(0, 1fr) minmax(14rem, 28rem) auto;
   align-items: center;
   gap: 1rem;
-  border: 1px solid #f1f2f4;
+  border: 1px solid var(--border-light);
   border-radius: 0.75rem;
-  background: #ffffff;
+  background: var(--surface);
   box-shadow: 0 2px 4px rgba(121, 125, 134, 0.07);
   padding: 1rem;
   margin-top: 1rem;
+}
+
+:global(.dark) .processingCard {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
 }
 
 .processingFile {
@@ -262,9 +277,9 @@
   place-items: center;
   width: 2.25rem;
   height: 2.25rem;
-  border: 1px solid #dedfe3;
+  border: 1px solid var(--border);
   border-radius: 0.45rem;
-  background: #ffffff;
+  background: var(--surface);
   flex: 0 0 auto;
 }
 
@@ -275,7 +290,7 @@
 
 .fileName {
   overflow: hidden;
-  color: #1e2024;
+  color: var(--foreground);
   font-size: 0.9rem;
   font-weight: 800;
   text-overflow: ellipsis;
@@ -289,7 +304,7 @@
 .statementHeader p,
 .metric span,
 .tableFooter {
-  color: #5a5f68;
+  color: var(--foreground-muted);
 }
 
 .fileMeta {
@@ -300,7 +315,7 @@
 .progressLabels {
   display: flex;
   justify-content: space-between;
-  color: #5a5f68;
+  color: var(--foreground-muted);
   font-size: 0.64rem;
   font-weight: 900;
   letter-spacing: 0.08em;
@@ -312,7 +327,7 @@
   overflow: hidden;
   height: 0.38rem;
   border-radius: 999px;
-  background: #ecf5fe;
+  background: var(--accent-light);
 }
 
 .progressBar {
@@ -320,13 +335,13 @@
   width: 100%;
   height: 100%;
   border-radius: inherit;
-  background: #1f8cf9;
+  background: var(--accent);
   animation: pulseBar 1.4s ease-in-out infinite;
 }
 
 .parsedBadge {
   gap: 0.45rem;
-  color: #1e2024;
+  color: var(--foreground);
   font-size: 0.7rem;
   font-weight: 900;
   letter-spacing: 0.06em;
@@ -342,9 +357,15 @@
   box-shadow: 0 2px 4px rgba(121, 125, 134, 0.07);
 }
 
+:global(.dark) .emptyResults,
+:global(.dark) .panel,
+:global(.dark) .exportPanel {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
 .emptyResults {
-  border: 1px solid #eef0f3;
-  background: #f9fafa;
+  border: 1px solid var(--border-light);
+  background: var(--surface-secondary);
   padding: 2rem;
   margin-top: 2rem;
 }
@@ -352,7 +373,7 @@
 .emptyResults h2,
 .statementHeader h2,
 .summaryHeader h2 {
-  color: #1e2024;
+  color: var(--foreground);
   font-family: var(--font-heading);
   font-size: 1.5rem;
   line-height: 1.15;
@@ -365,15 +386,15 @@
 
 .errorCard,
 .warningCard {
-  border: 1px solid rgba(220, 38, 38, 0.18);
-  background: #fff3f3;
+  border: 1px solid var(--error-border);
+  background: var(--error-bg);
   padding: 1rem 1.1rem;
   margin-top: 1.5rem;
 }
 
 .statusTitle,
 .noticeTitle {
-  color: #1e2024;
+  color: var(--foreground);
   font-weight: 800;
 }
 
@@ -401,13 +422,13 @@
 
 .panel,
 .exportPanel {
-  border: 1px solid #f1f2f4;
-  background: #ffffff;
+  border: 1px solid var(--border-light);
+  background: var(--surface);
   padding: 1rem;
 }
 
 .exportPanel {
-  background: rgba(240, 247, 255, 0.28);
+  background: var(--accent-lighter);
 }
 
 .panelHeader,
@@ -420,7 +441,7 @@
 }
 
 .panelLabel {
-  color: #5a5f68;
+  color: var(--foreground-muted);
   font-size: 0.76rem;
   font-weight: 900;
   letter-spacing: 0.1em;
@@ -429,7 +450,7 @@
 
 .largeValue {
   display: block;
-  color: #1e2024;
+  color: var(--foreground);
   font-family: var(--font-heading);
   font-size: 1.7rem;
   line-height: 1;
@@ -439,14 +460,14 @@
 .subtleRow {
   justify-content: space-between;
   gap: 0.75rem;
-  color: #5a5f68;
+  color: var(--foreground-muted);
   font-size: 0.86rem;
   margin-top: 0.8rem;
 }
 
 .trend {
   gap: 0.25rem;
-  color: #1dc973;
+  color: var(--success);
   font-size: 0.76rem;
   font-weight: 800;
 }
@@ -468,9 +489,9 @@
 }
 
 .selectedCardSummary {
-  border: 1px solid #eef0f3;
+  border: 1px solid var(--border-light);
   border-radius: 0.75rem;
-  background: #f9fafa;
+  background: var(--surface-secondary);
   padding: 0.75rem;
   margin: 1rem 0;
 }
@@ -488,7 +509,7 @@
 }
 
 .metric strong {
-  color: #1e2024;
+  color: var(--foreground);
   font-size: 1.15rem;
   line-height: 1.15;
 }
@@ -501,7 +522,7 @@
 .selector {
   display: grid;
   gap: 0.35rem;
-  color: #5a5f68;
+  color: var(--foreground-muted);
   font-size: 0.68rem;
   font-weight: 900;
   letter-spacing: 0.08em;
@@ -509,10 +530,10 @@
 }
 
 .select {
-  border: 1px solid #dedfe3;
+  border: 1px solid var(--border);
   border-radius: 0.5rem;
-  background: #ffffff;
-  color: #1e2024;
+  background: var(--surface);
+  color: var(--foreground);
   padding: 0.45rem 0.6rem;
   font: inherit;
   letter-spacing: 0;
@@ -530,9 +551,9 @@
   grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 0.75rem;
-  border: 1px solid #dedfe3;
+  border: 1px solid var(--border);
   border-radius: 0.75rem;
-  background: rgba(249, 250, 250, 0.55);
+  background: var(--surface-secondary);
   padding: 0.6rem;
 }
 
@@ -541,14 +562,14 @@
   align-items: center;
   gap: 0.65rem;
   min-width: 0;
-  color: #1e2024;
+  color: var(--foreground);
   font-size: 0.88rem;
   font-weight: 800;
 }
 
 .cardType {
   border-radius: 0.3rem;
-  background: #2563eb;
+  background: var(--card-badge-bg);
   color: #ffffff;
   padding: 0.15rem 0.45rem;
   font-size: 0.55rem;
@@ -559,7 +580,7 @@
 }
 
 .cardRow strong {
-  color: #1e2024;
+  color: var(--foreground);
   font-size: 0.86rem;
 }
 
@@ -567,10 +588,10 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid #dedfe3;
+  border: 1px solid var(--border);
   border-radius: 0.45rem;
-  background: #ffffff;
-  color: #1f8cf9;
+  background: var(--surface);
+  color: var(--accent);
   padding: 0.35rem 0.5rem;
   font-size: 0.72rem;
   font-weight: 900;
@@ -597,7 +618,7 @@
 .localAssurance {
   justify-content: center;
   gap: 0.4rem;
-  color: #5a5f68;
+  color: var(--foreground-muted);
   font-size: 0.68rem;
   font-weight: 700;
   margin-top: 0.85rem;
@@ -621,16 +642,20 @@
 .issueList {
   margin: 0.65rem 0 0;
   padding-left: 1.1rem;
-  color: #7f1d1d;
+  color: var(--error-text);
   line-height: 1.5;
 }
 
 .tableCard {
   overflow: hidden;
-  border: 1px solid #f1f2f4;
+  border: 1px solid var(--border-light);
   border-radius: 0.75rem;
-  background: #ffffff;
+  background: var(--surface);
   box-shadow: 0 2px 4px rgba(121, 125, 134, 0.07);
+}
+
+:global(.dark) .tableCard {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
 }
 
 .resultsTableCard {
@@ -656,15 +681,15 @@
 
 .table th,
 .table td {
-  border-bottom: 1px solid #dedfe3;
-  color: #5a5f68;
+  border-bottom: 1px solid var(--border);
+  color: var(--foreground-muted);
   font-size: 0.86rem;
   padding: 0.9rem 1rem;
   vertical-align: middle;
 }
 
 .table th {
-  background: #ffffff;
+  background: var(--surface);
   font-weight: 800;
 }
 
@@ -680,7 +705,7 @@
 
 .merchantCell {
   gap: 0.75rem;
-  color: #1e2024;
+  color: var(--foreground);
 }
 
 .merchantCell span {
@@ -689,30 +714,30 @@
   width: 1.75rem;
   height: 1.75rem;
   border-radius: 0.5rem;
-  background: #f4f4f6;
-  color: #5a5f68;
+  background: var(--surface-tertiary);
+  color: var(--foreground-muted);
   font-size: 0.65rem;
   font-weight: 900;
   flex: 0 0 auto;
 }
 
 .merchantCell strong {
-  color: #1e2024;
+  color: var(--foreground);
 }
 
 .amountCell {
-  color: #1e2024 !important;
+  color: var(--foreground) !important;
   font-weight: 900;
   text-align: right;
 }
 
 .deltaWarning {
-  color: #dc2626 !important;
+  color: var(--error) !important;
   font-weight: 900;
 }
 
 .tableFooter {
-  border-top: 1px solid #dedfe3;
+  border-top: 1px solid var(--border);
   padding: 0.9rem 1rem;
   font-size: 0.76rem;
 }
@@ -723,7 +748,7 @@
 
 .auditBlock,
 .reconciliationBlock {
-  border-top: 1px solid #dedfe3;
+  border-top: 1px solid var(--border);
   margin-top: 0.8rem;
   padding-top: 0.8rem;
 }
@@ -731,7 +756,7 @@
 .auditSummary,
 .detailsDisclosure summary {
   cursor: pointer;
-  color: #1f8cf9;
+  color: var(--accent);
   font-weight: 800;
 }
 
@@ -766,21 +791,25 @@
 }
 
 .summaryStatCardBlue {
-  background: #1f8cf9;
+  background: var(--accent);
   color: #ffffff;
   box-shadow: 0 8px 16px rgba(31, 140, 249, 0.2);
 }
 
+:global(.dark) .summaryStatCardBlue {
+  box-shadow: 0 8px 16px rgba(59, 158, 255, 0.25);
+}
+
 .summaryStatCardLight {
-  border: 1px solid rgba(31, 140, 249, 0.1);
-  background: #f0f7ff;
-  color: #1f8cf9;
+  border: 1px solid var(--accent-border);
+  background: var(--accent-lighter);
+  color: var(--accent);
 }
 
 .summaryStatCardWhite {
-  border: 1px solid #dedfe3;
-  background: #ffffff;
-  color: #1e2024;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--foreground);
 }
 
 .summaryStatTop {
@@ -823,6 +852,12 @@
   margin-top: 0.7rem;
 }
 
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
 @keyframes pulseBar {
   0%,
   100% {
@@ -847,7 +882,7 @@
   }
 
   .uploadZone {
-    border: 2px dashed rgba(31, 140, 249, 0.22);
+    border: 2px dashed var(--accent-border);
     background-image: none;
   }
 
@@ -912,9 +947,9 @@
 
   .processingCard {
     grid-template-columns: 1fr;
-    border-color: #dedfe3;
+    border-color: var(--border);
     border-radius: 1rem;
-    background: #f9fafa;
+    background: var(--surface-secondary);
     margin-top: 0.8rem;
   }
 
@@ -966,7 +1001,7 @@
     gap: 0;
     max-height: min(28rem, calc(100vh - 24rem));
     overflow-y: auto;
-    border-top: 1px solid #dedfe3;
+    border-top: 1px solid var(--border);
     margin-top: 0.75rem;
     padding-right: 0.25rem;
   }
@@ -976,7 +1011,7 @@
     grid-template-columns: auto minmax(0, 1fr) auto;
     align-items: center;
     gap: 1rem;
-    border-bottom: 1px solid #dedfe3;
+    border-bottom: 1px solid var(--border);
     padding: 1rem 0;
   }
 
@@ -986,8 +1021,8 @@
     width: 2.5rem;
     height: 2.5rem;
     border-radius: 50%;
-    background: #f4f4f6;
-    color: #5a5f68;
+    background: var(--surface-tertiary);
+    color: var(--foreground-muted);
     font-size: 0.75rem;
     font-weight: 900;
   }
@@ -999,19 +1034,19 @@
   .transactionItem div strong {
     display: block;
     overflow: hidden;
-    color: #1e2024;
+    color: var(--foreground);
     font-size: 0.88rem;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
   .transactionItem div span {
-    color: #5a5f68;
+    color: var(--foreground-muted);
     font-size: 0.7rem;
   }
 
   .transactionItem > strong {
-    color: #1e2024;
+    color: var(--foreground);
     font-size: 0.86rem;
     text-align: right;
   }
@@ -1027,8 +1062,8 @@
     display: grid;
     justify-items: center;
     gap: 0.7rem;
-    border-top: 1px solid #dedfe3;
-    background: rgba(255, 255, 255, 0.86);
+    border-top: 1px solid var(--border);
+    background: var(--sticky-bg);
     backdrop-filter: blur(12px);
     padding: 1rem;
     margin: 1.5rem -1rem -7rem;

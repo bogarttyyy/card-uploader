@@ -1,6 +1,47 @@
 :root {
   --background: #ffffff;
   --foreground: #1e2024;
+  --foreground-muted: #5a5f68;
+  --border: #dedfe3;
+  --border-light: #f1f2f4;
+  --surface: #ffffff;
+  --surface-secondary: #f9fafa;
+  --surface-tertiary: #f4f4f6;
+  --accent: #1f8cf9;
+  --accent-light: rgba(31, 140, 249, 0.1);
+  --accent-lighter: rgba(240, 247, 255, 0.3);
+  --accent-border: rgba(31, 140, 249, 0.22);
+  --success: #1dc973;
+  --error: #dc2626;
+  --error-bg: #fff3f3;
+  --error-border: rgba(220, 38, 38, 0.18);
+  --error-text: #7f1d1d;
+  --header-bg: rgba(255, 255, 255, 0.76);
+  --sticky-bg: rgba(255, 255, 255, 0.86);
+  --card-badge-bg: #2563eb;
+}
+
+.dark {
+  --background: #0f1115;
+  --foreground: #e8eaed;
+  --foreground-muted: #9ca3af;
+  --border: #2d3139;
+  --border-light: #1f2329;
+  --surface: #1a1d23;
+  --surface-secondary: #13161a;
+  --surface-tertiary: #252a31;
+  --accent: #3b9eff;
+  --accent-light: rgba(59, 158, 255, 0.15);
+  --accent-lighter: rgba(59, 158, 255, 0.08);
+  --accent-border: rgba(59, 158, 255, 0.3);
+  --success: #22d97a;
+  --error: #f87171;
+  --error-bg: rgba(248, 113, 113, 0.1);
+  --error-border: rgba(248, 113, 113, 0.25);
+  --error-text: #fca5a5;
+  --header-bg: rgba(15, 17, 21, 0.85);
+  --sticky-bg: rgba(15, 17, 21, 0.9);
+  --card-badge-bg: #3b82f6;
 }
 
 html {
