@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -22,6 +23,17 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <Script id="theme-bootstrap" strategy="beforeInteractive">
+          {`try {
+  var storedTheme = window.localStorage.getItem("card-uploader-theme");
+  var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+  document.documentElement.classList.toggle("dark", storedTheme ? storedTheme === "dark" : prefersDark);
+} catch {
+  document.documentElement.classList.remove("dark");
+}`}
+        </Script>
+      </head>
       <body>{children}</body>
     </html>
   );

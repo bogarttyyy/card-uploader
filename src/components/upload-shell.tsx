@@ -141,7 +141,8 @@ export function UploadShell() {
               browser-generated CSV files without sending data to a backend service.
             </p>
           </div>
-          <div className="flex items-center gap-3 justify-between">
+          <div className="flex flex-row-reverse items-center gap-3 justify-between">
+            <ThemeToggle />
             {extractionState.status !== "idle" ? (
               <button
               type="button"
@@ -152,7 +153,6 @@ export function UploadShell() {
                 Upload New Bill
               </button>
             ) : null}
-            <ThemeToggle />
           </div>
         </header>
 

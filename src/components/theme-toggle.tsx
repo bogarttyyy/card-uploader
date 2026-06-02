@@ -2,10 +2,13 @@
 
 import { Moon, Sun } from "lucide-react";
 
+const THEME_STORAGE_KEY = "card-uploader-theme";
+
 function toggleTheme() {
   const root = document.documentElement;
-  const isDark = root.classList.toggle("dark");
-  window.localStorage.setItem("card-uploader-theme", isDark ? "dark" : "light");
+  const shouldUseDarkTheme = !root.classList.contains("dark");
+  root.classList.toggle("dark", shouldUseDarkTheme);
+  window.localStorage.setItem(THEME_STORAGE_KEY, shouldUseDarkTheme ? "dark" : "light");
 }
 
 export function ThemeToggle() {
