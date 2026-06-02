@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { UploadShell } from "@/components/upload-shell";
 import { PdfExtractionError, extractPdfText } from "@/lib/pdf-extraction";
@@ -96,6 +96,11 @@ describe("UploadShell", () => {
   beforeEach(() => {
     extractPdfTextMock.mockReset();
     parseStatementFromExtractionMock.mockReset();
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(null, { status: 200 })));
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   it("shows loading and success details after a valid pdf upload", async () => {
@@ -199,6 +204,55 @@ describe("UploadShell", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent(/parsing failed/i);
     expect(screen.getByText(/could not be parsed into the supported format/i)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith(
+        "/api/extraction-failures",
+        expect.objectContaining({
+          method: "POST",
+          body: expect.stringContaining("invalid statement format"),
+        }),
+      );
+    });
+  });
+
+  it("reports extraction failures to the server for Vercel logging", async () => {
+    extractPdfTextMock.mockRejectedValue(
+      new PdfExtractionError("extraction_failed", "The PDF extraction worker failed."),
+    );
+
+    render(<UploadShell />);
+    const user = userEvent.setup();
+    const fileInput = screen.getByLabelText(/choose a pdf statement/i);
+    const file = new File(["%PDF-1.4"], "statement.pdf", {
+      type: "application/pdf",
+      lastModified: 1772452800000,
+    });
+
+    await user.upload(fileInput, file);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/extraction failed/i);
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith(
+        "/api/extraction-failures",
+        expect.objectContaining({
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            stage: "extraction",
+            fileName: "statement.pdf",
+            fileSize: 8,
+            fileType: "application/pdf",
+            fileLastModified: 1772452800000,
+            errorCode: "extraction_failed",
+            errorMessage: "The PDF extraction worker failed.",
+            userAgent: navigator.userAgent,
+          }),
+          keepalive: true,
+        }),
+      );
+    });
   });
 
   it("blocks exports when required statement details are missing", async () => {
@@ -251,5 +305,6 @@ describe("UploadShell", () => {
       /please upload a pdf statement/i,
     );
     expect(screen.getByText(/selected file: notes\.txt \(unsupported file\)/i)).toBeInTheDocument();
+    expect(fetch).not.toHaveBeenCalled();
   });
 });

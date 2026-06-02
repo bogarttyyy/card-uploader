@@ -14,6 +14,7 @@ import {
 import { useId, useRef, useState } from "react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { getAcceptedFileTypes, isPdfFileName } from "@/lib/files";
+import { reportExtractionFailure } from "@/lib/extraction-failure-logging";
 import { PdfExtractionError, extractPdfText } from "@/lib/pdf-extraction";
 import {
   buildCsvData,
@@ -78,17 +79,26 @@ export function UploadShell() {
         return;
       }
 
-      const extractionError =
-        error instanceof PdfExtractionError
-          ? {
-              title: "Extraction failed",
-              message: error.message,
-            }
-          : {
-              title: "Parsing failed",
-              message:
-                "The PDF text was extracted, but the statement could not be parsed into the supported format.",
-            };
+      const isPdfExtractionError = error instanceof PdfExtractionError;
+      const extractionError = isPdfExtractionError
+        ? {
+            title: "Extraction failed",
+            message: error.message,
+          }
+        : {
+            title: "Parsing failed",
+            message:
+              "The PDF text was extracted, but the statement could not be parsed into the supported format.",
+          };
+
+      if (!isPdfExtractionError || error.code !== "unsupported_file") {
+        reportExtractionFailure({
+          stage: isPdfExtractionError ? "extraction" : "parsing",
+          file,
+          errorCode: isPdfExtractionError ? error.code : undefined,
+          errorMessage: error instanceof Error ? error.message : String(error),
+        });
+      }
 
       setExtractionState({
         status: "error",
