@@ -15,6 +15,7 @@ const eslintConfig = defineConfig([
     ".venv/**",
     "__pycache__/**",
     "statements/**",
+    "figma-redesign/**",
   ]),
 ]);
 

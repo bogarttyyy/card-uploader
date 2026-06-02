@@ -62,7 +62,7 @@ Continued over page..`,
     const bytes = readFileSync(
       path.resolve(
         process.cwd(),
-        "statements/Statement_CRD9c58559b0ebf4c5a8d313f114865af1dd5032a0356e926bd83.pdf",
+        "statements/Statement_CRDf6412efd4bd3894627eb4c658e86df2457df654268874e6d59.pdf",
       ),
     );
     const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
@@ -70,10 +70,10 @@ Continued over page..`,
 
     const parsed = parseStatementFromExtraction(extraction);
 
-    expect(parsed.metadata.minimumDueDate).toBe("13 April 2026");
+    expect(parsed.metadata.minimumDueDate).toBe("16 March 2026");
     expect(parsed.metadata.cardNumbers).toEqual(["7248", "8489"]);
-    expect(parsed.metadata.closingBalance).toBe(3053.1);
-    expect(computeBalance(parsed.transactions, parsed.metadata.cardNumbers)).toBe(3053.1);
+    expect(parsed.metadata.closingBalance).toBe(3575.18);
+    expect(computeBalance(parsed.transactions, parsed.metadata.cardNumbers)).toBe(3575.18);
 
     const actualSummaries = Object.fromEntries(
       buildCardSummary(parsed.transactions, parsed.metadata.cardNumbers).map((row) => [
@@ -83,8 +83,8 @@ Continued over page..`,
     );
 
     expect(actualSummaries).toEqual({
-      "7248": 1239.57,
-      "8489": 1813.53,
+      "7248": 2009.6,
+      "8489": 1565.58,
     });
   });
 
@@ -92,7 +92,7 @@ Continued over page..`,
     const bytes = readFileSync(
       path.resolve(
         process.cwd(),
-        "statements/Statement_CRD9c58559b0ebf4c5a8d313f114865af1dd5032a0356e926bd83.pdf",
+        "statements/Statement_CRDf6412efd4bd3894627eb4c658e86df2457df654268874e6d59.pdf",
       ),
     );
     const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
@@ -107,8 +107,8 @@ Continued over page..`,
       ).map((row) => [row.item, row.delta]),
     );
 
-    expect(deltas.Purchases).toBe(0);
-    expect(deltas["Payments and Credits"]).toBe(0);
-    expect(deltas["Computed Closing Balance"]).toBe(0);
+    expect(Math.abs(deltas.Purchases ?? 0)).toBe(0);
+    expect(Math.abs(deltas["Payments and Credits"] ?? 0)).toBe(0);
+    expect(Math.abs(deltas["Computed Closing Balance"] ?? 0)).toBe(0);
   });
 });

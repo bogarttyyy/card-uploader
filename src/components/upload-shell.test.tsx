@@ -129,7 +129,7 @@ describe("UploadShell", () => {
     expect(screen.getByText("13 April 2026")).toBeInTheDocument();
     expect(screen.getAllByText("$3,053.10").length).toBeGreaterThan(0);
     expect(screen.getByText(/7248, 8489/i)).toBeInTheDocument();
-    expect(screen.getByText(/browser extraction details/i)).toBeInTheDocument();
+    expect(screen.getByText(/exportable rows/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /download combined csv/i })).toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: "CSV" })).toHaveLength(2);
     expect(screen.getByRole("combobox")).toHaveValue("7248");

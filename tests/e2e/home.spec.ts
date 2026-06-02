@@ -6,7 +6,7 @@ test("loads the upload shell", async ({ page }) => {
 
   await expect(
     page.getByRole("heading", {
-      name: /credit card statements, parsed directly in the browser\./i,
+      name: /credit card bill manager/i,
     }),
   ).toBeVisible();
   await expect(page.getByLabel("Choose a PDF statement")).toBeVisible();
@@ -32,15 +32,15 @@ test("extracts text from the fixture pdf", async ({ page }) => {
 
   const fixturePath = path.resolve(
     process.cwd(),
-    "statements/Statement_CRD9c58559b0ebf4c5a8d313f114865af1dd5032a0356e926bd83.pdf",
+    "statements/Statement_CRDf6412efd4bd3894627eb4c658e86df2457df654268874e6d59.pdf",
   );
 
   await page.getByLabel("Choose a PDF statement").setInputFiles(fixturePath);
 
   await expect(page.getByRole("link", { name: /download combined csv/i })).toBeVisible();
-  await expect(page.getByText("Browser extraction details")).toBeVisible();
-  await expect(page.getByText("13 April 2026")).toBeVisible();
-  await expect(page.getByText("$3,053.10").first()).toBeVisible();
+  await expect(page.getByText("Exportable rows")).toBeVisible();
+  await expect(page.getByText("16 March 2026")).toBeVisible();
+  await expect(page.getByText("$3,575.18").first()).toBeVisible();
   await expect(page.getByText("7248, 8489")).toBeVisible();
   await expect(page.getByText(/raw page text debug snapshot/i)).toHaveCount(0);
   await expect(page.getByRole("combobox")).toHaveValue("7248");
