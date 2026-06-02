@@ -44,7 +44,15 @@ test("extracts text from the fixture pdf", async ({ page }) => {
   await expect(page.getByText("7248, 8489")).toBeVisible();
   await expect(page.getByText(/raw page text debug snapshot/i)).toHaveCount(0);
   await expect(page.getByRole("combobox")).toHaveValue("7248");
+  await expect(page.getByRole("link", { name: /^download csv$/i })).toHaveAttribute(
+    "download",
+    "credit_card_7248_transactions.csv",
+  );
   await page.getByRole("combobox").selectOption("8489");
   await expect(page.getByRole("combobox")).toHaveValue("8489");
+  await expect(page.getByRole("link", { name: /^download csv$/i })).toHaveAttribute(
+    "download",
+    "credit_card_8489_transactions.csv",
+  );
   await expect(page.getByText("OPENAI *CHATGPT SUBSCR OPENAI.COM CA")).toBeVisible();
 });

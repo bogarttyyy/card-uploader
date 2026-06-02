@@ -27,6 +27,10 @@ vi.mock("@/lib/statement", async () => {
 const extractPdfTextMock = vi.mocked(extractPdfText);
 const parseStatementFromExtractionMock = vi.mocked(parseStatementFromExtraction);
 
+function decodeCsvHref(href: string): string {
+  return decodeURIComponent(href.replace("data:text/csv;charset=utf-8,", ""));
+}
+
 describe("UploadShell", () => {
   const parsedStatement = {
     metadata: {
@@ -136,6 +140,10 @@ describe("UploadShell", () => {
     expect(screen.getByText(/7248, 8489/i)).toBeInTheDocument();
     expect(screen.getByText(/exportable rows/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /download combined csv/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /^download csv$/i })).toHaveAttribute(
+      "download",
+      "credit_card_7248_transactions.csv",
+    );
     expect(screen.getAllByRole("link", { name: "CSV" })).toHaveLength(2);
     expect(screen.getByRole("combobox")).toHaveValue("7248");
     expect(screen.getByText(/show excluded rows \(1\)/i)).toBeInTheDocument();
@@ -159,7 +167,15 @@ describe("UploadShell", () => {
     await screen.findByRole("link", { name: /download combined csv/i });
     await user.selectOptions(screen.getByRole("combobox"), "8489");
 
+    const selectedCardCsvLink = screen.getByRole("link", { name: /^download csv$/i });
+    const csvData = decodeCsvHref(selectedCardCsvLink.getAttribute("href") ?? "");
+
     expect(screen.getByRole("combobox")).toHaveValue("8489");
+    expect(selectedCardCsvLink).toHaveAttribute("download", "credit_card_8489_transactions.csv");
+    expect(csvData).toContain("Card Number,Date,Description,Amount (AUD)");
+    expect(csvData).toContain("8489,2026-03-14,eBay O*20-14219-98730 Sydney,-4.22");
+    expect(csvData).not.toContain("7248,2026-02-20,Amazon,29.99");
+    expect(csvData).not.toContain("BPAY PAYMENT");
     expect(screen.getByText("eBay O*20-14219-98730 Sydney")).toBeInTheDocument();
     expect(screen.queryByText(/show excluded rows \(1\)/i)).not.toBeInTheDocument();
   });

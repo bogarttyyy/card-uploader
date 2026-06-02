@@ -601,6 +601,9 @@ function TransactionPanel({
     ? getExcludedTransactionsForCard(parsed.transactions, selectedCard)
     : [];
   const cardTotal = selectedCard ? computeCardTotal(parsed.transactions, selectedCard) : 0;
+  const selectedCardCsvHref = buildCsvHref(
+    buildCsvData(transactionsToExportRows(cardTransactions, parsed.metadata)),
+  );
 
   return (
     <section className="space-y-6">
@@ -644,11 +647,21 @@ function TransactionPanel({
                   {cardTransactions.length} exportable transactions
                 </p>
               </div>
-              <div className="text-left md:text-right">
-                <p className="mb-1 text-sm text-slate-600 dark:text-slate-400">Card Total</p>
-                <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                  {formatCurrency(cardTotal)}
-                </p>
+              <div className="flex flex-col items-start gap-3 md:items-end">
+                <div className="text-left md:text-right">
+                  <p className="mb-1 text-sm text-slate-600 dark:text-slate-400">Card Total</p>
+                  <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                    {formatCurrency(cardTotal)}
+                  </p>
+                </div>
+                <a
+                  href={selectedCardCsvHref}
+                  download={`credit_card_${selectedCard}_transactions.csv`}
+                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-blue-700 dark:hover:bg-blue-600"
+                >
+                  <Download className="h-4 w-4" />
+                  Download CSV
+                </a>
               </div>
             </div>
           </div>
