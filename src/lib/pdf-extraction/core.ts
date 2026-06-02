@@ -7,6 +7,18 @@ type PdfTextItem = {
   transform?: number[];
 };
 
+type PdfTextContentChunk = {
+  items: PdfTextItem[];
+};
+
+type PdfTextContentStream = {
+  getReader: () => ReadableStreamDefaultReader<PdfTextContentChunk>;
+};
+
+type PdfTextPage = {
+  streamTextContent: () => PdfTextContentStream;
+};
+
 type LineItem = {
   text: string;
   x: number;
@@ -34,14 +46,34 @@ export async function extractPdfTextFromBuffer(
 
   for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
     const page = await pdf.getPage(pageNumber);
-    const textContent = await page.getTextContent();
-    pageTexts.push(normalizePageText(textContent.items as PdfTextItem[]));
+    const textItems = await readPageTextItems(page as PdfTextPage);
+    pageTexts.push(normalizePageText(textItems));
   }
 
   return {
     pageTexts,
     fullText: pageTexts.join("\n"),
   };
+}
+
+async function readPageTextItems(page: PdfTextPage): Promise<PdfTextItem[]> {
+  const reader = page.streamTextContent().getReader();
+  const items: PdfTextItem[] = [];
+
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) {
+        return items;
+      }
+
+      if (value) {
+        items.push(...value.items);
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
 }
 
 export function normalizePageText(items: PdfTextItem[]): string {
