@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Card Upload",
-    short_name: "Card Upload",
+    name: "Pampi Card",
+    short_name: "Pampi Card",
     description: "Credit card PDF to CSV converter.",
     start_url: "/",
     display: "standalone",

@@ -3,7 +3,7 @@ import Script from "next/script";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Card Upload",
+  title: "Pampi Card",
   description: "Next.js port in progress for the credit card PDF to CSV converter.",
   icons: {
     icon: [

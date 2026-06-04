@@ -1,4 +1,4 @@
-# Card Uploader
+# Pampi Card
 
 Browser-based Macquarie credit card statement parser and CSV exporter built with Next.js.
 
