@@ -47,13 +47,13 @@ test("extracts text from the fixture pdf", async ({ page }) => {
   await expect(page.getByRole("combobox")).toHaveValue("7248");
   await expect(page.getByRole("link", { name: /^download csv$/i })).toHaveAttribute(
     "download",
-    "credit_card_7248_transactions.csv",
+    "2026-Feb-7248-card-transactions.csv",
   );
   await page.getByRole("combobox").selectOption("8489");
   await expect(page.getByRole("combobox")).toHaveValue("8489");
   await expect(page.getByRole("link", { name: /^download csv$/i })).toHaveAttribute(
     "download",
-    "credit_card_8489_transactions.csv",
+    "2026-Feb-8489-card-transactions.csv",
   );
   await expect(page.getByText("OPENAI *CHATGPT SUBSCR OPENAI.COM CA")).toBeVisible();
 
@@ -62,7 +62,7 @@ test("extracts text from the fixture pdf", async ({ page }) => {
   const download = await downloadPromise;
   const downloadPath = await download.path();
 
-  expect(download.suggestedFilename()).toBe("credit_card_all_transactions.csv");
+  expect(download.suggestedFilename()).toBe("2026-Feb-card-transactions.csv");
   expect(downloadPath).not.toBeNull();
 
   const csvData = await readFile(downloadPath!, "utf8");

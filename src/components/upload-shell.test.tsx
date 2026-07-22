@@ -141,7 +141,7 @@ describe("UploadShell", () => {
     expect(screen.getByText(/exportable rows/i)).toBeInTheDocument();
     const combinedCsvLink = screen.getByRole("link", { name: /download combined csv/i });
     const combinedCsvData = decodeCsvHref(combinedCsvLink.getAttribute("href") ?? "");
-    expect(combinedCsvLink).toHaveAttribute("download", "credit_card_all_transactions.csv");
+    expect(combinedCsvLink).toHaveAttribute("download", "2026-Mar-card-transactions.csv");
     expect(combinedCsvData).toBe(
       [
         "Card Number,Date,Description,Amount (AUD),,,Card Number,Date,Description,Amount (AUD)",
@@ -153,7 +153,7 @@ describe("UploadShell", () => {
     expect(combinedCsvData).not.toContain("BPAY PAYMENT");
     expect(screen.getByRole("link", { name: /^download csv$/i })).toHaveAttribute(
       "download",
-      "credit_card_7248_transactions.csv",
+      "2026-Mar-7248-card-transactions.csv",
     );
     expect(screen.getAllByRole("link", { name: "CSV" })).toHaveLength(2);
     expect(screen.getByRole("combobox")).toHaveValue("7248");
@@ -182,7 +182,10 @@ describe("UploadShell", () => {
     const csvData = decodeCsvHref(selectedCardCsvLink.getAttribute("href") ?? "");
 
     expect(screen.getByRole("combobox")).toHaveValue("8489");
-    expect(selectedCardCsvLink).toHaveAttribute("download", "credit_card_8489_transactions.csv");
+    expect(selectedCardCsvLink).toHaveAttribute(
+      "download",
+      "2026-Mar-8489-card-transactions.csv",
+    );
     expect(csvData).toContain("Card Number,Date,Description,Amount (AUD)");
     expect(csvData).toContain("8489,2026-03-14,eBay O*20-14219-98730 Sydney,-4.22");
     expect(csvData).not.toContain("7248,2026-02-20,Amazon,29.99");

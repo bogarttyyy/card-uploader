@@ -30,6 +30,10 @@ import {
 import type { CardSummary, ReconciliationRow, Transaction } from "@/lib/statement";
 
 const ACCEPTED_FILE_TYPES = getAcceptedFileTypes();
+const FILE_MONTH_FORMATTER = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  timeZone: "UTC",
+});
 
 type ExtractionState =
   | { status: "idle" }
@@ -425,7 +429,7 @@ function BillSummary({
         {isCompleteStatement ? (
           <a
             href={combinedCsvHref}
-            download="credit_card_all_transactions.csv"
+            download={getCsvFileName(parsed.metadata.statementPeriodEnd)}
             className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-4 py-3 text-sm font-semibold text-blue-700 transition-colors hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-white"
           >
             <Download className="h-4 w-4" />
@@ -531,7 +535,10 @@ function CardList({
                     <td className="px-3 py-4 text-right md:px-6">
                       <a
                         href={csvHref}
-                        download={`credit_card_${row.cardNumber}_transactions.csv`}
+                        download={getCsvFileName(
+                          parsed.metadata.statementPeriodEnd,
+                          row.cardNumber,
+                        )}
                         className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-blue-700 dark:hover:bg-blue-600"
                       >
                         CSV
@@ -660,7 +667,7 @@ function TransactionPanel({
                 </div>
                 <a
                   href={selectedCardCsvHref}
-                  download={`credit_card_${selectedCard}_transactions.csv`}
+                  download={getCsvFileName(parsed.metadata.statementPeriodEnd, selectedCard)}
                   className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-blue-700 dark:hover:bg-blue-600"
                 >
                   <Download className="h-4 w-4" />
@@ -922,4 +929,14 @@ function getDueDateHelper(value: string | null): string | undefined {
 
 function buildCsvHref(csvData: string): string {
   return `data:text/csv;charset=utf-8,${encodeURIComponent(csvData)}`;
+}
+
+function getCsvFileName(statementPeriodEnd: Date | null, cardNumber?: string): string {
+  const cardSegment = cardNumber ? `${cardNumber}-` : "";
+
+  if (!statementPeriodEnd || Number.isNaN(statementPeriodEnd.getTime())) {
+    return `${cardSegment}card-transactions.csv`;
+  }
+
+  return `${statementPeriodEnd.getUTCFullYear()}-${FILE_MONTH_FORMATTER.format(statementPeriodEnd)}-${cardSegment}card-transactions.csv`;
 }
