@@ -1,11 +1,12 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
+import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
 const fixturePath = path.resolve(
-  process.cwd(),
-  "statements/Statement_CRDf6412efd4bd3894627eb4c658e86df2457df654268874e6d59.pdf",
+  process.env.STATEMENT_FIXTURE_DIRECTORY ?? path.join(process.cwd(), "statements"),
+  "Statement_CRDf6412efd4bd3894627eb4c658e86df2457df654268874e6d59.pdf",
 );
 
 test("loads an accessible, keyboard-operable upload shell", async ({ page }) => {
@@ -50,6 +51,7 @@ test("rejects invalid and oversized uploads and handles a cancelled picker", asy
 test("uploads, reconciles, switches cards, and downloads BOM-prefixed CSV files", async ({
   page,
 }) => {
+  test.skip(!existsSync(fixturePath), "Local statement fixture is not available");
   const consoleErrors: string[] = [];
   page.on("console", (message) => {
     if (message.type() === "error") {
