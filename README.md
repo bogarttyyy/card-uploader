@@ -85,7 +85,9 @@ npm audit --audit-level=high
   side by side
 - Block exports until required metadata and reconciliation totals are complete and exact
 
-Fixture PDFs used by tests live in `statements/`.
+Optional local regression PDFs live in the ignored `statements/` directory. Fixture-dependent
+tests run when those files are available and skip cleanly in CI so private statements are never
+required in the repository.
 
 ## Vercel Setup
 
