@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 
 test("loads the upload shell", async ({ page }) => {
@@ -46,13 +47,30 @@ test("extracts text from the fixture pdf", async ({ page }) => {
   await expect(page.getByRole("combobox")).toHaveValue("7248");
   await expect(page.getByRole("link", { name: /^download csv$/i })).toHaveAttribute(
     "download",
-    "credit_card_7248_transactions.csv",
+    "2026-Feb-7248-card-transactions.csv",
   );
   await page.getByRole("combobox").selectOption("8489");
   await expect(page.getByRole("combobox")).toHaveValue("8489");
   await expect(page.getByRole("link", { name: /^download csv$/i })).toHaveAttribute(
     "download",
-    "credit_card_8489_transactions.csv",
+    "2026-Feb-8489-card-transactions.csv",
   );
   await expect(page.getByText("OPENAI *CHATGPT SUBSCR OPENAI.COM CA")).toBeVisible();
+
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("link", { name: /download combined csv/i }).click();
+  const download = await downloadPromise;
+  const downloadPath = await download.path();
+
+  expect(download.suggestedFilename()).toBe("2026-Feb-card-transactions.csv");
+  expect(downloadPath).not.toBeNull();
+
+  const csvData = await readFile(downloadPath!, "utf8");
+  expect(csvData).toContain(
+    "Card Number,Date,Description,Amount (AUD),,,Card Number,Date,Description,Amount (AUD)",
+  );
+  expect(csvData).toContain("7248,");
+  expect(csvData).toContain("8489,");
+  expect(csvData.split("\n")[1]).toMatch(/^8489,.*,,,7248,/);
+  expect(csvData).not.toContain("BPAY PAYMENT");
 });

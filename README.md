@@ -63,7 +63,8 @@ npm run test:e2e
 - Extract PDF text fully in the browser
 - Parse statement metadata and per-card transactions
 - Review reconciliation totals
-- Export combined or per-card CSV files
+- Export per-card CSV files or one Google Sheets-friendly combined CSV with cards arranged
+  side by side
 
 Fixture PDFs used by tests live in `statements/`.
 

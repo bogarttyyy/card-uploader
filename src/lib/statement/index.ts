@@ -1,5 +1,6 @@
 export {
   buildCardSummary,
+  buildCombinedCardCsvData,
   buildCsvData,
   buildReconciliationRows,
   computeBalance,
