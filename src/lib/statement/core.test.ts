@@ -202,7 +202,7 @@ describe("statement core", () => {
     expect(csvData).toContain('8489,2026-02-14,"eBay, ""Refund""",-4.22');
   });
 
-  it("arranges cards side by side with independent totals", () => {
+  it("arranges cards in descending order with independent totals", () => {
     const rows: ExportRow[] = [
       {
         "Card Number": "7248",
@@ -227,10 +227,10 @@ describe("statement core", () => {
     expect(buildCombinedCardCsvData(rows, ["7248", "8489"])).toBe(
       [
         "Card Number,Date,Description,Amount (AUD),,,Card Number,Date,Description,Amount (AUD)",
-        '7248,2026-01-21,Merchant A,50,,,8489,2026-02-14,"eBay, ""Refund""",-4.22',
-        "7248,2026-01-22,Merchant B,25,,,,,,",
-        ",,,,,,,,,-4.22",
-        ",,,75,,,,,,",
+        '8489,2026-02-14,"eBay, ""Refund""",-4.22,,,7248,2026-01-21,Merchant A,50',
+        ",,,,,,7248,2026-01-22,Merchant B,25",
+        ",,,-4.22,,,,,,",
+        ",,,,,,,,,75",
       ].join("\n"),
     );
   });

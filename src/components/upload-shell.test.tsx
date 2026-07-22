@@ -145,9 +145,9 @@ describe("UploadShell", () => {
     expect(combinedCsvData).toBe(
       [
         "Card Number,Date,Description,Amount (AUD),,,Card Number,Date,Description,Amount (AUD)",
-        "7248,2026-02-20,Amazon,29.99,,,8489,2026-03-14,eBay O*20-14219-98730 Sydney,-4.22",
+        "8489,2026-03-14,eBay O*20-14219-98730 Sydney,-4.22,,,7248,2026-02-20,Amazon,29.99",
         ",,,,,,,,,",
-        ",,,29.99,,,,,,-4.22",
+        ",,,-4.22,,,,,,29.99",
       ].join("\n"),
     );
     expect(combinedCsvData).not.toContain("BPAY PAYMENT");

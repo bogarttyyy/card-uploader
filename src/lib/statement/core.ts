@@ -245,7 +245,8 @@ export function buildCombinedCardCsvData(
     return "";
   }
 
-  const cardBlocks = cardNumbers.map((cardNumber) => {
+  const orderedCardNumbers = [...cardNumbers].sort((left, right) => right.localeCompare(left));
+  const cardBlocks = orderedCardNumbers.map((cardNumber) => {
     const cardRows = rows.filter((row) => row["Card Number"] === cardNumber);
     const total = roundCurrency(
       cardRows.reduce((sum, row) => sum + row["Amount (AUD)"], 0),

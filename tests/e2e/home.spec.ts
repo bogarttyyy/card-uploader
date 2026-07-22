@@ -71,5 +71,6 @@ test("extracts text from the fixture pdf", async ({ page }) => {
   );
   expect(csvData).toContain("7248,");
   expect(csvData).toContain("8489,");
+  expect(csvData.split("\n")[1]).toMatch(/^8489,.*,,,7248,/);
   expect(csvData).not.toContain("BPAY PAYMENT");
 });
