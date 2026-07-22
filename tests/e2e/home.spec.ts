@@ -14,6 +14,12 @@ test("loads an accessible, keyboard-operable upload shell", async ({ page }) => 
 
   await expect(page.getByRole("heading", { name: /pampi card/i })).toBeVisible();
   await expect(page.getByLabel("Choose a PDF statement")).toBeEnabled();
+  await expect(page.getByText("PDF only · Up to 10 MiB")).toBeVisible();
+  await page.getByLabel("Choose a PDF statement").focus();
+  const focusShadow = await page
+    .getByTestId("file-drop-zone")
+    .evaluate((element) => getComputedStyle(element).boxShadow);
+  expect(focusShadow).not.toBe("none");
   await page.getByRole("button", { name: /use dark theme/i }).focus();
   await expect(page.getByRole("button", { name: /use dark theme/i })).toBeFocused();
 
@@ -42,16 +48,18 @@ test("rejects invalid and oversized uploads and handles a cancelled picker", asy
 
   await page.getByRole("button", { name: /upload new statement/i }).click();
   const fileChooserPromise = page.waitForEvent("filechooser");
-  await page.getByText("Select File", { exact: true }).click();
+  await page.getByText("Choose PDF", { exact: true }).click();
   const fileChooser = await fileChooserPromise;
   await fileChooser.setFiles([]);
-  await expect(page.getByText("No statement loaded yet.")).toBeVisible();
+  await expect(page.getByRole("heading", { name: /upload a macquarie card statement/i })).toBeVisible();
+  await expect(page.getByText(/no statement loaded yet/i)).toHaveCount(0);
 });
 
-test("uploads, reconciles, switches cards, and downloads BOM-prefixed CSV files", async ({
+test("uploads, reconciles, responds without overflow, and downloads CSV files", async ({
   page,
 }) => {
   test.skip(!existsSync(fixturePath), "Local statement fixture is not available");
+  await page.setViewportSize({ width: 1440, height: 900 });
   const consoleErrors: string[] = [];
   page.on("console", (message) => {
     if (message.type() === "error") {
@@ -65,8 +73,19 @@ test("uploads, reconciles, switches cards, and downloads BOM-prefixed CSV files"
   await expect(page.getByText("16 March 2026")).toBeVisible();
   await expect(page.getByText("$3,575.18").first()).toBeVisible();
   await expect(page.getByText("7248, 8489")).toBeVisible();
+  const reconciliation = page.getByText(/all statement totals match/i);
+  await expect(reconciliation).toBeVisible();
+  await expect(reconciliation.locator("xpath=ancestor::details")).not.toHaveAttribute("open", "");
+  await reconciliation.click();
   await expect(page.getByRole("table", { name: /statement reconciliation totals/i })).toBeVisible();
   await expect(page.getByRole("combobox")).toHaveValue("7248");
+
+  const desktopAccessibility = await new AxeBuilder({ page }).analyze();
+  expect(desktopAccessibility.violations).toEqual([]);
+
+  await expect(page.getByText(/show excluded rows/i)).toBeVisible();
+  await page.getByText(/show excluded rows/i).click();
+  await expect(page.getByRole("table", { name: /excluded payments for card ending 7248/i })).toBeVisible();
 
   const cardDownloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: /download selected card 7248 csv/i }).click();
@@ -74,8 +93,31 @@ test("uploads, reconciles, switches cards, and downloads BOM-prefixed CSV files"
   expect(cardDownload.suggestedFilename()).toBe("2026-Feb-7248-card-transactions.csv");
 
   await page.getByRole("combobox").selectOption("8489");
-  await expect(page.getByText("OPENAI *CHATGPT SUBSCR OPENAI.COM CA")).toBeVisible();
+  await expect(page.getByRole("cell", { name: "OPENAI *CHATGPT SUBSCR OPENAI.COM CA" })).toBeVisible();
   await expect(page.getByRole("button", { name: /download selected card 8489 csv/i })).toBeVisible();
+
+  await page.getByRole("button", { name: /use dark theme/i }).click();
+  await expect(page.locator("html")).toHaveClass(/dark/);
+  await page.waitForTimeout(200);
+  const darkAccessibility = await new AxeBuilder({ page }).analyze();
+  expect(darkAccessibility.violations).toEqual([]);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByRole("table", { name: /transactions for card ending 8489/i })).toBeHidden();
+  await expect(page.getByRole("group", { name: /transactions for card ending 8489/i })).toBeVisible();
+  const mobileAccessibility = await new AxeBuilder({ page }).analyze();
+  expect(mobileAccessibility.violations).toEqual([]);
+  const documentDoesNotOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+  );
+  expect(documentDoesNotOverflow).toBe(true);
+  const visibleSectionsFit = await page.locator("main section:visible").evaluateAll((sections) =>
+    sections.every((section) => section.scrollWidth <= section.clientWidth + 1),
+  );
+  expect(visibleSectionsFit).toBe(true);
+
+  await page.getByRole("button", { name: /use light theme/i }).click();
+  await expect(page.locator("html")).not.toHaveClass(/dark/);
 
   const combinedDownloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: /download combined csv/i }).click();
