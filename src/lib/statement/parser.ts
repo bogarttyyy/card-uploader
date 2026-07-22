@@ -5,8 +5,9 @@ import {
   formatStatementDate,
   parseAmount,
   parseStatementPeriodDate,
+  validateStatementForExport,
 } from "@/lib/statement/core";
-import type { CardSummary, ReconciliationRow, StatementMetadata, Transaction } from "@/lib/statement/types";
+import type { CardSummary, ReconciliationRow, StatementMetadata, StatementValidation, Transaction } from "@/lib/statement/types";
 
 const TRANSACTION_LINE_RE =
   /^([A-Za-z]{3}\s+\d{1,2})\s+(.+?)\s+(\d{1,3}(?:,\d{3})*\.\d{2})(?:\s+(CR))?$/;
@@ -32,6 +33,7 @@ export type ParsedStatementResult = {
   transactions: Transaction[];
   cardSummary: CardSummary[];
   reconciliationRows: ReconciliationRow[];
+  validation: StatementValidation;
 };
 
 export async function parseStatementFromPdf(file: File): Promise<ParsedStatementResult> {
@@ -44,11 +46,13 @@ export function parseStatementFromExtraction(
 ): ParsedStatementResult {
   const metadata = getStatementMetadata(extraction.fullText);
   const transactions = parseTransactionPages(extraction.pageTexts, metadata.primaryCard);
+  const reconciliationRows = buildReconciliationRows(metadata, transactions, metadata.cardNumbers);
   return {
     metadata,
     transactions,
     cardSummary: buildCardSummary(transactions, metadata.cardNumbers),
-    reconciliationRows: buildReconciliationRows(metadata, transactions, metadata.cardNumbers),
+    reconciliationRows,
+    validation: validateStatementForExport(metadata, transactions, reconciliationRows),
   };
 }
 

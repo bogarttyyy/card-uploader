@@ -11,7 +11,8 @@ import {
   RefreshCw,
   Upload,
 } from "lucide-react";
-import { useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
+import { CsvDownload } from "@/components/csv-download";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { getAcceptedFileTypes, isPdfFileName } from "@/lib/files";
 import { reportExtractionFailure } from "@/lib/extraction-failure-logging";
@@ -30,7 +31,7 @@ import {
 import type { CardSummary, ReconciliationRow, Transaction } from "@/lib/statement";
 
 const ACCEPTED_FILE_TYPES = getAcceptedFileTypes();
-const FILE_MONTH_FORMATTER = new Intl.DateTimeFormat("en-US", {
+const FILE_MONTH_FORMATTER = new Intl.DateTimeFormat("en-AU", {
   month: "short",
   timeZone: "UTC",
 });
@@ -43,20 +44,30 @@ type ExtractionState =
       pageCount: number;
       characterCount: number;
       parsed: ParsedStatementResult;
-      issues: string[];
     }
-  | { status: "error"; title: string; message: string };
+  | { status: "error"; title: string; message: string; category: string };
 
 export function UploadShell() {
   const inputId = useId();
   const requestIdRef = useRef(0);
+  const abortControllerRef = useRef<AbortController | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
   const [extractionState, setExtractionState] = useState<ExtractionState>({ status: "idle" });
   const [selectedCard, setSelectedCard] = useState<string>("");
   const [isDragging, setIsDragging] = useState(false);
 
+  useEffect(
+    () => () => {
+      abortControllerRef.current?.abort();
+    },
+    [],
+  );
+
   async function processFile(file: File) {
+    abortControllerRef.current?.abort();
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
     const requestId = requestIdRef.current + 1;
     requestIdRef.current = requestId;
 
@@ -65,7 +76,7 @@ export function UploadShell() {
     setSelectedCard("");
 
     try {
-      const result = await extractPdfText(file);
+      const result = await extractPdfText(file, { signal: abortController.signal });
       if (requestIdRef.current !== requestId) {
         return;
       }
@@ -76,7 +87,6 @@ export function UploadShell() {
         pageCount: result.pageTexts.length,
         characterCount: result.fullText.length,
         parsed,
-        issues: getStatementIssues(parsed),
       });
       setSelectedCard(parsed.metadata.cardNumbers[0] ?? "");
     } catch (error) {
@@ -85,6 +95,11 @@ export function UploadShell() {
       }
 
       const isPdfExtractionError = error instanceof PdfExtractionError;
+      if (isPdfExtractionError && error.code === "aborted") {
+        return;
+      }
+      const failureStage = isPdfExtractionError ? "extraction" : "parsing";
+      const failureCode = isPdfExtractionError ? error.code : "parsing_failed";
       const extractionError = isPdfExtractionError
         ? {
             title: "Extraction failed",
@@ -98,16 +113,15 @@ export function UploadShell() {
 
       if (!isPdfExtractionError || error.code !== "unsupported_file") {
         reportExtractionFailure({
-          stage: isPdfExtractionError ? "extraction" : "parsing",
-          file,
-          errorCode: isPdfExtractionError ? error.code : undefined,
-          errorMessage: error instanceof Error ? error.message : String(error),
+          stage: failureStage,
+          code: failureCode,
         });
       }
 
       setExtractionState({
         status: "error",
         ...extractionError,
+        category: `${failureStage}/${failureCode}`,
       });
       setSelectedCard("");
     }
@@ -134,6 +148,8 @@ export function UploadShell() {
   }
 
   function resetWorkflow() {
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
     requestIdRef.current += 1;
     setSelectedFileName(null);
     setExtractionState({ status: "idle" });
@@ -149,7 +165,7 @@ export function UploadShell() {
         <header className="mb-8 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div>
             <h1 className="mb-2 text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
-              Credit Card Bill Manager
+              Pampi Card
             </h1>
             <p className="max-w-2xl text-slate-600 dark:text-slate-400">
               Upload a PDF statement, review parsed totals, reconcile balances, and export
@@ -165,7 +181,7 @@ export function UploadShell() {
               className="inline-flex items-center gap-2 rounded-lg bg-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600"
               >
                 <RefreshCw className="h-4 w-4" />
-                Upload New Bill
+                Upload New Statement
               </button>
             ) : null}
           </div>
@@ -246,6 +262,7 @@ function UploadPanel({
           accept={ACCEPTED_FILE_TYPES}
           aria-label="Choose a PDF statement"
           aria-describedby={`${inputId}-hint`}
+          disabled={isProcessing}
           onChange={onFileChange}
           className="sr-only"
         />
@@ -271,7 +288,7 @@ function UploadPanel({
 
               <div>
                 <h2 className="mb-2 text-2xl font-bold text-slate-900 dark:text-white">
-                  Upload Your Credit Card Bill
+                  Upload Your Credit Card Statement
                 </h2>
                 <p className="mb-4 text-slate-600 dark:text-slate-400">
                   Drag and drop your PDF statement here, or click to browse.
@@ -308,6 +325,9 @@ function UploadPanel({
           <div>
             <p className="mb-1 font-semibold">{extractionState.title}</p>
             <p className="text-red-700 dark:text-red-300">{extractionState.message}</p>
+            <p className="mt-2 text-xs text-red-700 dark:text-red-300">
+              Anonymous failure category reported: {extractionState.category}.
+            </p>
           </div>
         </div>
       ) : (
@@ -316,7 +336,8 @@ function UploadPanel({
           <div>
             <p className="mb-1 font-semibold">Private browser workflow</p>
             <p className="text-blue-700 dark:text-blue-300">
-              The current implementation accepts PDF statements only and processes them locally.
+              PDF contents stay on this device. If processing fails, only an anonymous stage and
+              error code are reported.
             </p>
           </div>
         </div>
@@ -337,51 +358,56 @@ function SuccessfulStatementView({
   onReset: () => void;
 }) {
   const { parsed } = extractionState;
-  const isCompleteStatement = extractionState.issues.length === 0;
+  const isCompleteStatement = parsed.validation.isExportReady;
   const combinedTransactions = parsed.transactions.filter((transaction) => !transaction.isPayment);
-  const combinedCsvHref = buildCsvHref(
-    buildCombinedCardCsvData(
-      transactionsToExportRows(combinedTransactions, parsed.metadata),
-      parsed.metadata.cardNumbers,
-    ),
+  const combinedCsvData = buildCombinedCardCsvData(
+    transactionsToExportRows(combinedTransactions, parsed.metadata),
+    parsed.metadata.cardNumbers,
   );
-  const hasReconciliationMismatch = parsed.reconciliationRows.some(
-    (row) => row.delta !== null && row.delta !== 0,
-  );
+  const hasParsedActivity =
+    parsed.metadata.cardNumbers.length > 0 && parsed.transactions.length > 0;
 
   return (
-    <div className="space-y-6" role="status">
+    <div className="space-y-6">
+      <p className="sr-only" role="status" aria-live="polite">
+        Statement processing complete.
+      </p>
       <BillSummary
         parsed={parsed}
         pageCount={extractionState.pageCount}
         characterCount={extractionState.characterCount}
         exportableRows={combinedTransactions.length}
         isCompleteStatement={isCompleteStatement}
-        combinedCsvHref={combinedCsvHref}
+        combinedCsvData={combinedCsvData}
       />
 
-      {extractionState.issues.length > 0 ? (
-        <IssueCard title="This statement is not ready for export yet." issues={extractionState.issues} />
+      {parsed.validation.issues.length > 0 ? (
+        <IssueCard
+          title="This statement is not ready for export yet."
+          issues={parsed.validation.issues.map((issue) => issue.message)}
+        />
       ) : null}
 
-      {hasReconciliationMismatch ? (
-        <div
-          role="alert"
-          className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100"
-        >
-          Parsed totals do not fully reconcile with the statement summary. Review the
-          reconciliation section before exporting.
-        </div>
+      {parsed.validation.warnings.length > 0 ? (
+        <IssueCard
+          title="Statement warning"
+          issues={parsed.validation.warnings.map((warning) => warning.message)}
+        />
       ) : null}
 
-      {isCompleteStatement ? (
+      {hasParsedActivity ? (
         <>
-          <CardList cardSummary={parsed.cardSummary} parsed={parsed} />
+          <CardList
+            cardSummary={parsed.cardSummary}
+            parsed={parsed}
+            canExport={isCompleteStatement}
+          />
           <ReconciliationPanel rows={parsed.reconciliationRows} />
           <TransactionPanel
             parsed={parsed}
             selectedCard={selectedCard}
             onSelectedCardChange={onSelectedCardChange}
+            canExport={isCompleteStatement}
           />
         </>
       ) : (
@@ -404,14 +430,14 @@ function BillSummary({
   characterCount,
   exportableRows,
   isCompleteStatement,
-  combinedCsvHref,
+  combinedCsvData,
 }: {
   parsed: ParsedStatementResult;
   pageCount: number;
   characterCount: number;
   exportableRows: number;
   isCompleteStatement: boolean;
-  combinedCsvHref: string;
+  combinedCsvData: string;
 }) {
   const computedBalance = computeBalance(parsed.transactions, parsed.metadata.cardNumbers);
 
@@ -427,14 +453,15 @@ function BillSummary({
           </p>
         </div>
         {isCompleteStatement ? (
-          <a
-            href={combinedCsvHref}
-            download={getCsvFileName(parsed.metadata.statementPeriodEnd)}
+          <CsvDownload
+            csvData={combinedCsvData}
+            fileName={getCsvFileName(parsed.metadata.statementPeriodEnd)}
+            ariaLabel="Download combined CSV for all cards"
             className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-4 py-3 text-sm font-semibold text-blue-700 transition-colors hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-white"
           >
             <Download className="h-4 w-4" />
             Download Combined CSV
-          </a>
+          </CsvDownload>
         ) : null}
       </div>
 
@@ -476,9 +503,11 @@ function BillSummary({
 function CardList({
   cardSummary,
   parsed,
+  canExport,
 }: {
   cardSummary: CardSummary[];
   parsed: ParsedStatementResult;
+  canExport: boolean;
 }) {
   return (
     <section className="space-y-4">
@@ -486,6 +515,7 @@ function CardList({
       <div className="overflow-hidden rounded-lg bg-white shadow dark:bg-slate-800">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[48rem]">
+            <caption className="sr-only">Summary and CSV download for each card</caption>
             <thead className="border-b border-slate-200 bg-slate-50 dark:border-slate-600 dark:bg-slate-700">
               <tr>
                 <TableHead>Card</TableHead>
@@ -498,12 +528,10 @@ function CardList({
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
               {cardSummary.map((row) => {
-                const csvHref = buildCsvHref(
-                  buildCsvData(
-                    transactionsToExportRows(
-                      getTransactionsForCard(parsed.transactions, row.cardNumber),
-                      parsed.metadata,
-                    ),
+                const csvData = buildCsvData(
+                  transactionsToExportRows(
+                    getTransactionsForCard(parsed.transactions, row.cardNumber),
+                    parsed.metadata,
                   ),
                 );
 
@@ -533,16 +561,21 @@ function CardList({
                       {formatCurrency(row.netTotal)}
                     </TableCell>
                     <td className="px-3 py-4 text-right md:px-6">
-                      <a
-                        href={csvHref}
-                        download={getCsvFileName(
-                          parsed.metadata.statementPeriodEnd,
-                          row.cardNumber,
-                        )}
-                        className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-blue-700 dark:hover:bg-blue-600"
-                      >
-                        CSV
-                      </a>
+                      {canExport ? (
+                        <CsvDownload
+                          csvData={csvData}
+                          fileName={getCsvFileName(
+                            parsed.metadata.statementPeriodEnd,
+                            row.cardNumber,
+                          )}
+                          ariaLabel={`Download card ${row.cardNumber} CSV from summary`}
+                          className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-blue-700 dark:hover:bg-blue-600"
+                        >
+                          CSV
+                        </CsvDownload>
+                      ) : (
+                        <span className="text-sm text-slate-500 dark:text-slate-400">Blocked</span>
+                      )}
                     </td>
                   </tr>
                 );
@@ -566,6 +599,7 @@ function ReconciliationPanel({ rows }: { rows: ReconciliationRow[] }) {
       </div>
       <div className="overflow-x-auto p-4 md:p-6">
         <table className="w-full min-w-[42rem]">
+          <caption className="sr-only">Statement reconciliation totals</caption>
           <thead className="border-b border-slate-200 bg-slate-50 dark:border-slate-600 dark:bg-slate-700">
             <tr>
               <TableHead>Item</TableHead>
@@ -600,10 +634,12 @@ function TransactionPanel({
   parsed,
   selectedCard,
   onSelectedCardChange,
+  canExport,
 }: {
   parsed: ParsedStatementResult;
   selectedCard: string;
   onSelectedCardChange: (card: string) => void;
+  canExport: boolean;
 }) {
   const cardTransactions = selectedCard
     ? getTransactionsForCard(parsed.transactions, selectedCard)
@@ -612,8 +648,8 @@ function TransactionPanel({
     ? getExcludedTransactionsForCard(parsed.transactions, selectedCard)
     : [];
   const cardTotal = selectedCard ? computeCardTotal(parsed.transactions, selectedCard) : 0;
-  const selectedCardCsvHref = buildCsvHref(
-    buildCsvData(transactionsToExportRows(cardTransactions, parsed.metadata)),
+  const selectedCardCsvData = buildCsvData(
+    transactionsToExportRows(cardTransactions, parsed.metadata),
   );
 
   return (
@@ -665,14 +701,21 @@ function TransactionPanel({
                     {formatCurrency(cardTotal)}
                   </p>
                 </div>
-                <a
-                  href={selectedCardCsvHref}
-                  download={getCsvFileName(parsed.metadata.statementPeriodEnd, selectedCard)}
-                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-blue-700 dark:hover:bg-blue-600"
-                >
-                  <Download className="h-4 w-4" />
-                  Download CSV
-                </a>
+                {canExport ? (
+                  <CsvDownload
+                    csvData={selectedCardCsvData}
+                    fileName={getCsvFileName(parsed.metadata.statementPeriodEnd, selectedCard)}
+                    ariaLabel={`Download selected card ${selectedCard} CSV`}
+                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-blue-700 dark:hover:bg-blue-600"
+                  >
+                    <Download className="h-4 w-4" />
+                    Download CSV for {selectedCard}
+                  </CsvDownload>
+                ) : (
+                  <p className="text-sm font-medium text-amber-700 dark:text-amber-300">
+                    Downloads blocked until reconciliation is complete.
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -682,7 +725,10 @@ function TransactionPanel({
               All Transactions ({cardTransactions.length})
             </h4>
             {cardTransactions.length > 0 ? (
-              <TransactionsTable transactions={cardTransactions} />
+              <TransactionsTable
+                transactions={cardTransactions}
+                caption={`Transactions for card ending ${selectedCard}`}
+              />
             ) : (
               <p className="text-sm text-slate-600 dark:text-slate-400">
                 No valid transactions found for card ending in {selectedCard}.
@@ -695,7 +741,11 @@ function TransactionPanel({
                   Show excluded rows ({excludedTransactions.length})
                 </summary>
                 <div className="mt-4">
-                  <TransactionsTable transactions={excludedTransactions} excluded />
+                  <TransactionsTable
+                    transactions={excludedTransactions}
+                    caption={`Excluded payments for card ending ${selectedCard}`}
+                    excluded
+                  />
                 </div>
               </details>
             ) : null}
@@ -708,14 +758,17 @@ function TransactionPanel({
 
 function TransactionsTable({
   transactions,
+  caption,
   excluded = false,
 }: {
   transactions: Transaction[];
+  caption: string;
   excluded?: boolean;
 }) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-[34rem]">
+        <caption className="sr-only">{caption}</caption>
         <thead className="border-b border-slate-200 bg-slate-50 dark:border-slate-600 dark:bg-slate-700">
           <tr>
             <TableHead>Date</TableHead>
@@ -867,33 +920,19 @@ function TableCell({
   );
 }
 
-function getStatementIssues(parsed: ParsedStatementResult): string[] {
-  const issues: string[] = [];
-
-  if (!parsed.metadata.primaryCard) {
-    issues.push("Primary card could not be identified from the statement header.");
-  }
-
-  if (parsed.metadata.cardNumbers.length === 0) {
-    issues.push("No card numbers were detected in the statement.");
-  }
-
-  if (parsed.transactions.length === 0) {
-    issues.push("No valid transactions were found in the statement activity pages.");
-  }
-
-  return issues;
-}
+const CURRENCY_FORMATTER = new Intl.NumberFormat("en-AU", {
+  style: "currency",
+  currency: "AUD",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
 
 function formatCurrency(value: number | null): string {
   if (value === null) {
     return "-";
   }
 
-  return `$${value.toLocaleString(undefined, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
+  return CURRENCY_FORMATTER.format(value);
 }
 
 function formatStatementPeriod(parsed: ParsedStatementResult): string {
@@ -925,10 +964,6 @@ function getDueDateHelper(value: string | null): string | undefined {
   }
 
   return `${daysUntilDue} days remaining`;
-}
-
-function buildCsvHref(csvData: string): string {
-  return `data:text/csv;charset=utf-8,${encodeURIComponent(csvData)}`;
 }
 
 function getCsvFileName(statementPeriodEnd: Date | null, cardNumber?: string): string {

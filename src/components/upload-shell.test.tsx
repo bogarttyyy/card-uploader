@@ -27,10 +27,6 @@ vi.mock("@/lib/statement", async () => {
 const extractPdfTextMock = vi.mocked(extractPdfText);
 const parseStatementFromExtractionMock = vi.mocked(parseStatementFromExtraction);
 
-function decodeCsvHref(href: string): string {
-  return decodeURIComponent(href.replace("data:text/csv;charset=utf-8,", ""));
-}
-
 describe("UploadShell", () => {
   const parsedStatement = {
     metadata: {
@@ -95,12 +91,23 @@ describe("UploadShell", () => {
       { item: "Closing Balance", statement: 3053.1, parsed: 3053.1, delta: 0 },
       { item: "Computed Closing Balance", statement: 3053.1, parsed: 3053.1, delta: 0 },
     ],
+    validation: {
+      issues: [],
+      warnings: [],
+      isExportReady: true,
+    },
   };
 
   beforeEach(() => {
     extractPdfTextMock.mockReset();
     parseStatementFromExtractionMock.mockReset();
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(null, { status: 200 })));
+    vi.stubGlobal("URL", {
+      ...URL,
+      createObjectURL: vi.fn(() => "blob:test-csv"),
+      revokeObjectURL: vi.fn(),
+    });
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
   });
 
   afterEach(() => {
@@ -108,14 +115,8 @@ describe("UploadShell", () => {
   });
 
   it("shows loading and success details after a valid pdf upload", async () => {
-    let resolveExtraction: ((value: Awaited<ReturnType<typeof extractPdfText>>) => void) | null =
-      null;
-    extractPdfTextMock.mockImplementation(
-      () =>
-        new Promise((resolve) => {
-          resolveExtraction = resolve;
-        }),
-    );
+    const extraction = Promise.withResolvers<Awaited<ReturnType<typeof extractPdfText>>>();
+    extractPdfTextMock.mockReturnValue(extraction.promise);
 
     render(<UploadShell />);
     const user = userEvent.setup();
@@ -128,37 +129,57 @@ describe("UploadShell", () => {
 
     parseStatementFromExtractionMock.mockReturnValue(parsedStatement);
 
-    resolveExtraction?.({
+    extraction.resolve({
       pageTexts: ["Statement period 20/01/26-19/02/26"],
       fullText: "Statement period 20/01/26-19/02/26",
     });
 
-    await screen.findByRole("link", { name: /download combined csv/i });
+    await screen.findByRole("button", { name: /download combined csv/i });
 
     expect(screen.getByText("13 April 2026")).toBeInTheDocument();
     expect(screen.getAllByText("$3,053.10").length).toBeGreaterThan(0);
     expect(screen.getByText(/7248, 8489/i)).toBeInTheDocument();
     expect(screen.getByText(/exportable rows/i)).toBeInTheDocument();
-    const combinedCsvLink = screen.getByRole("link", { name: /download combined csv/i });
-    const combinedCsvData = decodeCsvHref(combinedCsvLink.getAttribute("href") ?? "");
-    expect(combinedCsvLink).toHaveAttribute("download", "2026-Mar-card-transactions.csv");
-    expect(combinedCsvData).toBe(
-      [
-        "Card Number,Date,Description,Amount (AUD),,,Card Number,Date,Description,Amount (AUD)",
-        "8489,2026-03-14,eBay O*20-14219-98730 Sydney,-4.22,,,7248,2026-02-20,Amazon,29.99",
-        ",,,,,,,,,",
-        ",,,-4.22,,,,,,29.99",
-      ].join("\n"),
-    );
-    expect(combinedCsvData).not.toContain("BPAY PAYMENT");
-    expect(screen.getByRole("link", { name: /^download csv$/i })).toHaveAttribute(
-      "download",
-      "2026-Mar-7248-card-transactions.csv",
-    );
-    expect(screen.getAllByRole("link", { name: "CSV" })).toHaveLength(2);
+    const combinedCsvButton = screen.getByRole("button", { name: /download combined csv/i });
+    await user.click(combinedCsvButton);
+    expect(URL.createObjectURL).toHaveBeenCalledWith(expect.any(Blob));
+    expect(HTMLAnchorElement.prototype.click).toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: /download card 7248 csv from summary/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /download selected card 7248 csv/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /download card 8489 csv from summary/i })).toBeInTheDocument();
     expect(screen.getByRole("combobox")).toHaveValue("7248");
     expect(screen.getByText(/show excluded rows \(1\)/i)).toBeInTheDocument();
     expect(screen.queryByText(/raw page text debug snapshot/i)).not.toBeInTheDocument();
+  });
+
+  it("cancels active extraction when reset before allowing another upload", async () => {
+    const signals: AbortSignal[] = [];
+    extractPdfTextMock.mockImplementation((_file, options) => {
+      if (options?.signal) {
+        signals.push(options.signal);
+      }
+      return new Promise(() => {});
+    });
+
+    render(<UploadShell />);
+    const user = userEvent.setup();
+    await user.upload(
+      screen.getByLabelText(/choose a pdf statement/i),
+      new File(["%PDF-1.4"], "first.pdf", { type: "application/pdf" }),
+    );
+    await screen.findByText(/extracting text from pdf/i);
+    expect(screen.getByLabelText(/choose a pdf statement/i)).toBeDisabled();
+
+    await user.click(screen.getByRole("button", { name: /upload new statement/i }));
+    expect(signals[0].aborted).toBe(true);
+    expect(screen.getByLabelText(/choose a pdf statement/i)).toBeEnabled();
+
+    await user.upload(
+      screen.getByLabelText(/choose a pdf statement/i),
+      new File(["%PDF-1.4"], "second.pdf", { type: "application/pdf" }),
+    );
+    expect(signals).toHaveLength(2);
+    expect(signals[1].aborted).toBe(false);
   });
 
   it("switches cards and updates the transaction view", async () => {
@@ -175,21 +196,11 @@ describe("UploadShell", () => {
 
     await user.upload(fileInput, file);
 
-    await screen.findByRole("link", { name: /download combined csv/i });
+    await screen.findByRole("button", { name: /download combined csv/i });
     await user.selectOptions(screen.getByRole("combobox"), "8489");
 
-    const selectedCardCsvLink = screen.getByRole("link", { name: /^download csv$/i });
-    const csvData = decodeCsvHref(selectedCardCsvLink.getAttribute("href") ?? "");
-
     expect(screen.getByRole("combobox")).toHaveValue("8489");
-    expect(selectedCardCsvLink).toHaveAttribute(
-      "download",
-      "2026-Mar-8489-card-transactions.csv",
-    );
-    expect(csvData).toContain("Card Number,Date,Description,Amount (AUD)");
-    expect(csvData).toContain("8489,2026-03-14,eBay O*20-14219-98730 Sydney,-4.22");
-    expect(csvData).not.toContain("7248,2026-02-20,Amazon,29.99");
-    expect(csvData).not.toContain("BPAY PAYMENT");
+    expect(screen.getByRole("button", { name: /download selected card 8489 csv/i })).toBeInTheDocument();
     expect(screen.getByText("eBay O*20-14219-98730 Sydney")).toBeInTheDocument();
     expect(screen.queryByText(/show excluded rows \(1\)/i)).not.toBeInTheDocument();
   });
@@ -204,6 +215,16 @@ describe("UploadShell", () => {
       reconciliationRows: parsedStatement.reconciliationRows.map((row) =>
         row.item === "Computed Closing Balance" ? { ...row, delta: 1.23 } : row,
       ),
+      validation: {
+        issues: [
+          {
+            code: "reconciliation_mismatch",
+            message: "Computed Closing Balance differs from the statement by +$1.23.",
+          },
+        ],
+        warnings: [],
+        isExportReady: false,
+      },
     });
 
     render(<UploadShell />);
@@ -213,7 +234,8 @@ describe("UploadShell", () => {
 
     await user.upload(fileInput, file);
 
-    expect(await screen.findByRole("alert")).toHaveTextContent(/parsed totals do not fully reconcile/i);
+    expect(await screen.findByRole("alert")).toHaveTextContent(/computed closing balance differs/i);
+    expect(screen.queryByRole("button", { name: /download combined csv/i })).not.toBeInTheDocument();
   });
 
   it("shows a parse failure when extracted text cannot be turned into a supported statement", async () => {
@@ -239,7 +261,7 @@ describe("UploadShell", () => {
         "/api/extraction-failures",
         expect.objectContaining({
           method: "POST",
-          body: expect.stringContaining("invalid statement format"),
+          body: JSON.stringify({ stage: "parsing", code: "parsing_failed" }),
         }),
       );
     });
@@ -269,16 +291,7 @@ describe("UploadShell", () => {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            stage: "extraction",
-            fileName: "statement.pdf",
-            fileSize: 8,
-            fileType: "application/pdf",
-            fileLastModified: 1772452800000,
-            errorCode: "extraction_failed",
-            errorMessage: "The PDF extraction worker failed.",
-            userAgent: navigator.userAgent,
-          }),
+          body: JSON.stringify({ stage: "extraction", code: "extraction_failed" }),
           keepalive: true,
         }),
       );
@@ -299,6 +312,15 @@ describe("UploadShell", () => {
       },
       transactions: [],
       cardSummary: [],
+      validation: {
+        issues: [
+          { code: "missing_primary_card", message: "Primary card could not be identified from the statement header." },
+          { code: "missing_card_numbers", message: "No card numbers were detected in the statement." },
+          { code: "missing_transactions", message: "No valid transactions were found in the statement activity pages." },
+        ],
+        warnings: [],
+        isExportReady: false,
+      },
     });
 
     render(<UploadShell />);
@@ -312,7 +334,7 @@ describe("UploadShell", () => {
     expect(screen.getByText(/primary card could not be identified/i)).toBeInTheDocument();
     expect(screen.getByText(/no card numbers were detected/i)).toBeInTheDocument();
     expect(screen.getByText(/no valid transactions were found/i)).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: /download combined csv/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /download combined csv/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
   });
 

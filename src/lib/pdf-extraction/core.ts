@@ -42,18 +42,23 @@ export async function extractPdfTextFromBuffer(
 
   const loadingTask = getDocument(documentOptions);
   const pdf = await loadingTask.promise;
-  const pageTexts: string[] = [];
 
-  for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
-    const page = await pdf.getPage(pageNumber);
-    const textItems = await readPageTextItems(page as PdfTextPage);
-    pageTexts.push(normalizePageText(textItems));
+  try {
+    const pageTexts: string[] = [];
+
+    for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+      const page = await pdf.getPage(pageNumber);
+      const textItems = await readPageTextItems(page as PdfTextPage);
+      pageTexts.push(normalizePageText(textItems));
+    }
+
+    return {
+      pageTexts,
+      fullText: pageTexts.join("\n"),
+    };
+  } finally {
+    await pdf.destroy();
   }
-
-  return {
-    pageTexts,
-    fullText: pageTexts.join("\n"),
-  };
 }
 
 async function readPageTextItems(page: PdfTextPage): Promise<PdfTextItem[]> {
@@ -77,33 +82,30 @@ async function readPageTextItems(page: PdfTextPage): Promise<PdfTextItem[]> {
 }
 
 export function normalizePageText(items: PdfTextItem[]): string {
-  const groupedLines: LineItem[][] = [];
-
-  for (const item of items) {
+  const positionedItems: LineItem[] = items.flatMap((item) => {
     const text = item.str?.trim();
-    if (!text) {
-      continue;
-    }
-
     const x = item.transform?.[4];
     const y = item.transform?.[5];
-    if (typeof x !== "number" || typeof y !== "number") {
-      continue;
-    }
 
-    const existingLine = groupedLines.find(
-      (line) => Math.abs(line[0]?.y ?? Number.POSITIVE_INFINITY - y) <= LINE_Y_TOLERANCE,
-    );
+    return text && typeof x === "number" && typeof y === "number"
+      ? [{ text, x, y }]
+      : [];
+  });
+  positionedItems.sort((left, right) => right.y - left.y || left.x - right.x);
 
-    if (existingLine) {
-      existingLine.push({ text, x, y });
+  const groupedLines: LineItem[][] = [];
+  for (const item of positionedItems) {
+    const currentLine = groupedLines.at(-1);
+    const lineY = currentLine?.[0]?.y;
+
+    if (currentLine && lineY !== undefined && Math.abs(lineY - item.y) <= LINE_Y_TOLERANCE) {
+      currentLine.push(item);
     } else {
-      groupedLines.push([{ text, x, y }]);
+      groupedLines.push([item]);
     }
   }
 
   const lines = groupedLines
-    .sort((left, right) => right[0].y - left[0].y)
     .map((line) =>
       line
         .sort((left, right) => left.x - right.x)
