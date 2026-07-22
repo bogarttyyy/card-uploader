@@ -9,7 +9,7 @@ The repo now contains a single app at the repository root. The old Streamlit/Pyt
 
 ## Requirements
 
-- Node.js 22
+- Node.js 22 or 24 (`.nvmrc` uses Node 22 for local development)
 - npm 10 or newer
 
 Use `.nvmrc` if you manage Node with `nvm`:

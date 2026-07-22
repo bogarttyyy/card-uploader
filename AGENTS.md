@@ -16,7 +16,7 @@ This is a single Next.js app at the repository root. Application routes and glob
 - `npm run test:watch`: run Vitest in watch mode.
 - `npm run test:e2e`: run Playwright tests; the config starts Next.js on `127.0.0.1:3000`.
 
-Use Node.js 22 as indicated by `.nvmrc` and `package.json`.
+Use Node.js 22 locally as indicated by `.nvmrc`; `package.json` also supports Node.js 24 for Vercel deployments.
 
 ## Coding Style & Naming Conventions
 
