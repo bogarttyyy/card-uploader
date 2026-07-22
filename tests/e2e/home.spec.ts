@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 
 test("loads the upload shell", async ({ page }) => {
@@ -55,4 +56,20 @@ test("extracts text from the fixture pdf", async ({ page }) => {
     "credit_card_8489_transactions.csv",
   );
   await expect(page.getByText("OPENAI *CHATGPT SUBSCR OPENAI.COM CA")).toBeVisible();
+
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("link", { name: /download combined csv/i }).click();
+  const download = await downloadPromise;
+  const downloadPath = await download.path();
+
+  expect(download.suggestedFilename()).toBe("credit_card_all_transactions.csv");
+  expect(downloadPath).not.toBeNull();
+
+  const csvData = await readFile(downloadPath!, "utf8");
+  expect(csvData).toContain(
+    "Card Number,Date,Description,Amount (AUD),,,Card Number,Date,Description,Amount (AUD)",
+  );
+  expect(csvData).toContain("7248,");
+  expect(csvData).toContain("8489,");
+  expect(csvData).not.toContain("BPAY PAYMENT");
 });

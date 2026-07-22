@@ -139,7 +139,18 @@ describe("UploadShell", () => {
     expect(screen.getAllByText("$3,053.10").length).toBeGreaterThan(0);
     expect(screen.getByText(/7248, 8489/i)).toBeInTheDocument();
     expect(screen.getByText(/exportable rows/i)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /download combined csv/i })).toBeInTheDocument();
+    const combinedCsvLink = screen.getByRole("link", { name: /download combined csv/i });
+    const combinedCsvData = decodeCsvHref(combinedCsvLink.getAttribute("href") ?? "");
+    expect(combinedCsvLink).toHaveAttribute("download", "credit_card_all_transactions.csv");
+    expect(combinedCsvData).toBe(
+      [
+        "Card Number,Date,Description,Amount (AUD),,,Card Number,Date,Description,Amount (AUD)",
+        "7248,2026-02-20,Amazon,29.99,,,8489,2026-03-14,eBay O*20-14219-98730 Sydney,-4.22",
+        ",,,,,,,,,",
+        ",,,29.99,,,,,,-4.22",
+      ].join("\n"),
+    );
+    expect(combinedCsvData).not.toContain("BPAY PAYMENT");
     expect(screen.getByRole("link", { name: /^download csv$/i })).toHaveAttribute(
       "download",
       "credit_card_7248_transactions.csv",

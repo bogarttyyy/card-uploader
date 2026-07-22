@@ -13,6 +13,13 @@ const DISPLAY_DATE_FORMATTER = new Intl.DateTimeFormat("en-GB", {
   timeZone: "UTC",
 });
 
+const EXPORT_HEADERS: (keyof ExportRow)[] = [
+  "Card Number",
+  "Date",
+  "Description",
+  "Amount (AUD)",
+];
+
 const MONTH_INDEX_BY_ABBR: Record<string, number> = {
   Jan: 0,
   Feb: 1,
@@ -220,11 +227,53 @@ export function buildCsvData(rows: ExportRow[]): string {
     return "";
   }
 
-  const headers: (keyof ExportRow)[] = ["Card Number", "Date", "Description", "Amount (AUD)"];
   const lines = [
-    headers.join(","),
-    ...rows.map((row) => headers.map((header) => escapeCsvValue(row[header])).join(",")),
+    EXPORT_HEADERS.join(","),
+    ...rows.map((row) =>
+      EXPORT_HEADERS.map((header) => escapeCsvValue(row[header])).join(","),
+    ),
   ];
+
+  return lines.join("\n");
+}
+
+export function buildCombinedCardCsvData(
+  rows: ExportRow[],
+  cardNumbers: string[],
+): string {
+  if (cardNumbers.length === 0) {
+    return "";
+  }
+
+  const cardBlocks = cardNumbers.map((cardNumber) => {
+    const cardRows = rows.filter((row) => row["Card Number"] === cardNumber);
+    const total = roundCurrency(
+      cardRows.reduce((sum, row) => sum + row["Amount (AUD)"], 0),
+    );
+
+    return [
+      [...EXPORT_HEADERS],
+      ...cardRows.map((row) => EXPORT_HEADERS.map((header) => row[header])),
+      ["", "", "", ""],
+      ["", "", "", total],
+    ];
+  });
+  const rowCount = Math.max(...cardBlocks.map((block) => block.length));
+  const lines: string[] = [];
+
+  for (let rowIndex = 0; rowIndex < rowCount; rowIndex += 1) {
+    const line: (string | number)[] = [];
+
+    cardBlocks.forEach((block, blockIndex) => {
+      if (blockIndex > 0) {
+        line.push("", "");
+      }
+
+      line.push(...(block[rowIndex] ?? ["", "", "", ""]));
+    });
+
+    lines.push(line.map(escapeCsvValue).join(","));
+  }
 
   return lines.join("\n");
 }

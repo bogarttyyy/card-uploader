@@ -17,6 +17,7 @@ import { getAcceptedFileTypes, isPdfFileName } from "@/lib/files";
 import { reportExtractionFailure } from "@/lib/extraction-failure-logging";
 import { PdfExtractionError, extractPdfText } from "@/lib/pdf-extraction";
 import {
+  buildCombinedCardCsvData,
   buildCsvData,
   computeBalance,
   computeCardTotal,
@@ -335,7 +336,10 @@ function SuccessfulStatementView({
   const isCompleteStatement = extractionState.issues.length === 0;
   const combinedTransactions = parsed.transactions.filter((transaction) => !transaction.isPayment);
   const combinedCsvHref = buildCsvHref(
-    buildCsvData(transactionsToExportRows(combinedTransactions, parsed.metadata)),
+    buildCombinedCardCsvData(
+      transactionsToExportRows(combinedTransactions, parsed.metadata),
+      parsed.metadata.cardNumbers,
+    ),
   );
   const hasReconciliationMismatch = parsed.reconciliationRows.some(
     (row) => row.delta !== null && row.delta !== 0,
