@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Pampi Card",
     short_name: "Pampi Card",
-    description: "Credit card PDF to CSV converter.",
+    description: "Private browser-based Macquarie credit card statement parser and CSV exporter.",
     start_url: "/",
     display: "standalone",
     background_color: "#ffffff",

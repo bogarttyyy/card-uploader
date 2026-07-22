@@ -7,7 +7,7 @@ describe("Home page", () => {
 
     expect(
       screen.getByRole("heading", {
-        name: /credit card bill manager/i,
+        name: /pampi card/i,
       }),
     ).toBeInTheDocument();
     expect(

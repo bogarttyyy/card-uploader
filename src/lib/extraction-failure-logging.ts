@@ -1,37 +1,23 @@
 import type { PdfExtractionErrorCode } from "@/lib/pdf-extraction";
 
 export type ExtractionFailureStage = "extraction" | "parsing";
+export type ExtractionFailureCode = PdfExtractionErrorCode | "parsing_failed";
 
 type ReportExtractionFailureInput = {
   stage: ExtractionFailureStage;
-  file: File;
-  errorCode?: PdfExtractionErrorCode;
-  errorMessage: string;
+  code: ExtractionFailureCode;
 };
 
 export function reportExtractionFailure({
   stage,
-  file,
-  errorCode,
-  errorMessage,
+  code,
 }: ReportExtractionFailureInput): void {
-  const payload = {
-    stage,
-    fileName: file.name,
-    fileSize: file.size,
-    fileType: file.type,
-    fileLastModified: file.lastModified,
-    errorCode,
-    errorMessage,
-    userAgent: globalThis.navigator?.userAgent,
-  };
-
   void fetch("/api/extraction-failures", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(payload),
+    body: JSON.stringify({ stage, code }),
     keepalive: true,
   }).catch(() => {
     // Reporting should never affect the upload workflow.

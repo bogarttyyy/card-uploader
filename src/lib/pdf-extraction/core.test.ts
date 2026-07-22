@@ -1,5 +1,5 @@
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
-import { extractPdfTextFromBuffer } from "@/lib/pdf-extraction/core";
+import { extractPdfTextFromBuffer, normalizePageText } from "@/lib/pdf-extraction/core";
 
 vi.mock("pdfjs-dist/legacy/build/pdf.mjs", () => ({
   getDocument: vi.fn(),
@@ -49,16 +49,18 @@ describe("pdf extraction core", () => {
         releaseLock,
       }),
     }));
+    const destroy = vi.fn().mockResolvedValue(undefined);
 
     getDocumentMock.mockReturnValue({
       promise: Promise.resolve({
         numPages: 1,
+        destroy,
         getPage: vi.fn().mockResolvedValue({
           getTextContent,
           streamTextContent,
         }),
       }),
-    } as ReturnType<typeof getDocument>);
+    } as unknown as ReturnType<typeof getDocument>);
 
     await expect(extractPdfTextFromBuffer(new ArrayBuffer(1))).resolves.toEqual({
       pageTexts: ["Hello World"],
@@ -67,5 +69,16 @@ describe("pdf extraction core", () => {
     expect(streamTextContent).toHaveBeenCalledTimes(1);
     expect(getTextContent).not.toHaveBeenCalled();
     expect(releaseLock).toHaveBeenCalledTimes(1);
+    expect(destroy).toHaveBeenCalledTimes(1);
+  });
+
+  it("groups realistic coordinates within tolerance and separates adjacent lines", () => {
+    const items = [
+      { str: "right", transform: [1, 0, 0, 1, 80, 700] },
+      { str: "left", transform: [1, 0, 0, 1, 10, 701.9] },
+      { str: "next", transform: [1, 0, 0, 1, 10, 697.8] },
+    ];
+
+    expect(normalizePageText(items)).toBe("left right\nnext");
   });
 });

@@ -2,11 +2,12 @@ import type {
   CardSummary,
   ExportRow,
   ReconciliationRow,
+  StatementValidation,
   StatementMetadata,
   Transaction,
 } from "@/lib/statement/types";
 
-const DISPLAY_DATE_FORMATTER = new Intl.DateTimeFormat("en-GB", {
+const DISPLAY_DATE_FORMATTER = new Intl.DateTimeFormat("en-AU", {
   day: "2-digit",
   month: "long",
   year: "numeric",
@@ -172,6 +173,103 @@ export function buildReconciliationRows(
   return rows;
 }
 
+export function validateStatementForExport(
+  metadata: StatementMetadata,
+  transactions: Transaction[],
+  reconciliationRows: ReconciliationRow[],
+): StatementValidation {
+  const issues: StatementValidation["issues"] = [];
+  const warnings: StatementValidation["warnings"] = [];
+
+  if (!metadata.statementPeriodStart || !metadata.statementPeriodEnd) {
+    issues.push({
+      code: "missing_statement_period",
+      message: "The complete statement period could not be identified.",
+    });
+  }
+  if (metadata.openingBalance === null || metadata.closingBalance === null) {
+    issues.push({
+      code: "missing_balances",
+      message: "Opening and closing balances are required for reconciliation.",
+    });
+  }
+  if (metadata.purchasesTotal === null) {
+    issues.push({
+      code: "missing_purchases_total",
+      message: "The statement purchases total could not be identified.",
+    });
+  }
+  if (metadata.paymentsAndCredits === null) {
+    issues.push({
+      code: "missing_payments_and_credits_total",
+      message: "The payments and credits total could not be identified.",
+    });
+  }
+  if (!metadata.primaryCard) {
+    issues.push({
+      code: "missing_primary_card",
+      message: "Primary card could not be identified from the statement header.",
+    });
+  }
+  if (metadata.cardNumbers.length === 0) {
+    issues.push({
+      code: "missing_card_numbers",
+      message: "No card numbers were detected in the statement.",
+    });
+  }
+
+  const exportableTransactions = transactions.filter((transaction) => !transaction.isPayment);
+  if (exportableTransactions.length === 0) {
+    issues.push({
+      code: "missing_transactions",
+      message: "No valid transactions were found in the statement activity pages.",
+    });
+  }
+  if (
+    transactions.some(
+      (transaction) => !metadata.cardNumbers.includes(transaction.cardNumber),
+    )
+  ) {
+    issues.push({
+      code: "unknown_transaction_card",
+      message: "At least one transaction belongs to an unidentified card.",
+    });
+  }
+
+  const requiredReconciliationItems = [
+    "Purchases",
+    "Payments and Credits",
+    "Computed Closing Balance",
+  ];
+  for (const item of requiredReconciliationItems) {
+    const row = reconciliationRows.find((candidate) => candidate.item === item);
+    if (!row || row.delta === null) {
+      issues.push({
+        code: "missing_reconciliation_delta",
+        message: `${item} could not be reconciled.`,
+      });
+    } else if (roundCurrency(row.delta) !== 0) {
+      issues.push({
+        code: "reconciliation_mismatch",
+        message: `${item} differs from the statement by ${formatSignedCurrency(row.delta)}.`,
+      });
+    }
+  }
+
+  if (!metadata.minimumDueDate) {
+    warnings.push({
+      code: "missing_due_date",
+      message: "The minimum payment due date could not be identified.",
+    });
+  }
+
+  return {
+    issues,
+    warnings,
+    isExportReady: issues.length === 0,
+  };
+}
+
 export function normalizeTransactionDate(
   transactionDate: string,
   metadata: StatementMetadata,
@@ -230,7 +328,9 @@ export function buildCsvData(rows: ExportRow[]): string {
   const lines = [
     EXPORT_HEADERS.join(","),
     ...rows.map((row) =>
-      EXPORT_HEADERS.map((header) => escapeCsvValue(row[header])).join(","),
+      EXPORT_HEADERS.map((header) =>
+        escapeCsvValue(protectSpreadsheetCell(row[header], header === "Card Number")),
+      ).join(","),
     ),
   ];
 
@@ -254,7 +354,11 @@ export function buildCombinedCardCsvData(
 
     return [
       [...EXPORT_HEADERS],
-      ...cardRows.map((row) => EXPORT_HEADERS.map((header) => row[header])),
+      ...cardRows.map((row) =>
+        EXPORT_HEADERS.map((header) =>
+          protectSpreadsheetCell(row[header], header === "Card Number"),
+        ),
+      ),
       ["", "", "", ""],
       ["", "", "", total],
     ];
@@ -351,4 +455,25 @@ function escapeCsvValue(value: string | number): string {
   }
 
   return value;
+}
+
+function protectSpreadsheetCell(
+  value: string | number,
+  preserveLeadingZeros = false,
+): string | number {
+  if (typeof value !== "string") {
+    return value;
+  }
+
+  if (/^[=+\-@\t\r]/.test(value) || (preserveLeadingZeros && /^0\d+$/.test(value))) {
+    return `'${value}`;
+  }
+
+  return value;
+}
+
+function formatSignedCurrency(value: number): string {
+  const rounded = roundCurrency(value);
+  const sign = rounded > 0 ? "+" : "";
+  return `${sign}$${rounded.toFixed(2)}`;
 }
