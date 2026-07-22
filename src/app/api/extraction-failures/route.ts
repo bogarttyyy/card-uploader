@@ -1,68 +1,81 @@
-type ExtractionFailurePayload = {
-  stage?: unknown;
-  fileName?: unknown;
-  fileSize?: unknown;
-  fileType?: unknown;
-  fileLastModified?: unknown;
-  errorCode?: unknown;
-  errorMessage?: unknown;
-  userAgent?: unknown;
-};
-
-const MAX_STRING_LENGTH = 500;
+const MAX_REQUEST_BYTES = 1024;
+const STAGES = new Set(["extraction", "parsing"]);
+const CODES = new Set([
+  "unsupported_file",
+  "file_too_large",
+  "invalid_pdf",
+  "aborted",
+  "worker_unavailable",
+  "extraction_failed",
+  "parsing_failed",
+]);
 
 export async function POST(request: Request) {
   const start = Date.now();
 
   try {
-    const payload = (await request.json()) as ExtractionFailurePayload;
+    if (!hasValidOrigin(request)) {
+      return new Response(null, { status: 403 });
+    }
+    if (request.headers.get("content-type")?.split(";", 1)[0] !== "application/json") {
+      return new Response(null, { status: 415 });
+    }
+
+    const contentLength = Number(request.headers.get("content-length"));
+    if (Number.isFinite(contentLength) && contentLength > MAX_REQUEST_BYTES) {
+      return new Response(null, { status: 413 });
+    }
+
+    const body = await request.text();
+    if (new TextEncoder().encode(body).byteLength > MAX_REQUEST_BYTES) {
+      return new Response(null, { status: 413 });
+    }
+
+    const payload = JSON.parse(body) as unknown;
+    if (!isValidPayload(payload)) {
+      return new Response(null, { status: 400 });
+    }
+
     const logPayload = {
       level: "error",
       msg: "pdf_extraction_failed",
       route: "/api/extraction-failures",
       requestId: request.headers.get("x-vercel-id"),
-      stage: toStringValue(payload.stage),
-      fileName: toStringValue(payload.fileName),
-      fileSize: toNumberValue(payload.fileSize),
-      fileType: toStringValue(payload.fileType),
-      fileLastModified: toNumberValue(payload.fileLastModified),
-      errorCode: toStringValue(payload.errorCode),
-      errorMessage: toStringValue(payload.errorMessage),
-      userAgent: toStringValue(payload.userAgent),
+      stage: payload.stage,
+      code: payload.code,
       ms: Date.now() - start,
     };
 
     console.error(JSON.stringify(logPayload));
 
-    return Response.json({ ok: true });
-  } catch (error) {
-    console.error(
-      JSON.stringify({
-        level: "error",
-        msg: "pdf_extraction_failure_log_failed",
-        route: "/api/extraction-failures",
-        requestId: request.headers.get("x-vercel-id"),
-        error: error instanceof Error ? error.message : String(error),
-        ms: Date.now() - start,
-      }),
-    );
-
-    return Response.json({ ok: false }, { status: 400 });
+    return new Response(null, { status: 204 });
+  } catch {
+    return new Response(null, { status: 400 });
   }
 }
 
-function toStringValue(value: unknown): string | undefined {
-  if (typeof value !== "string") {
-    return undefined;
-  }
-
-  return value.slice(0, MAX_STRING_LENGTH);
+function hasValidOrigin(request: Request): boolean {
+  const origin = request.headers.get("origin");
+  return origin !== null && origin === new URL(request.url).origin;
 }
 
-function toNumberValue(value: unknown): number | undefined {
-  if (typeof value !== "number" || !Number.isFinite(value)) {
-    return undefined;
+function isValidPayload(
+  payload: unknown,
+): payload is { stage: string; code: string } {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return false;
   }
 
-  return value;
+  const record = payload as Record<string, unknown>;
+  const keys = Object.keys(record);
+
+  return (
+    keys.length === 2 &&
+    keys.includes("stage") &&
+    keys.includes("code") &&
+    typeof record.stage === "string" &&
+    typeof record.code === "string" &&
+    STAGES.has(record.stage) &&
+    CODES.has(record.code)
+  );
 }

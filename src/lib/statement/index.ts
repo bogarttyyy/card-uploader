@@ -1,5 +1,6 @@
 export {
   buildCardSummary,
+  buildCombinedCardCsvData,
   buildCsvData,
   buildReconciliationRows,
   computeBalance,
@@ -13,6 +14,7 @@ export {
   parseStatementPeriodDate,
   summarizeCard,
   transactionsToExportRows,
+  validateStatementForExport,
 } from "@/lib/statement/core";
 export {
   getStatementMetadata,
@@ -25,6 +27,11 @@ export type {
   ExportRow,
   ReconciliationRow,
   StatementMetadata,
+  StatementValidation,
+  StatementValidationIssue,
+  StatementValidationIssueCode,
+  StatementValidationWarning,
+  StatementValidationWarningCode,
   Transaction,
 } from "@/lib/statement/types";
 export type { ParsedStatementResult } from "@/lib/statement/parser";

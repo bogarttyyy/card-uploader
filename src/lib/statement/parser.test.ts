@@ -1,5 +1,5 @@
 import path from "node:path";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { extractPdfTextFromBuffer } from "@/lib/pdf-extraction/core";
 import {
   buildCardSummary,
@@ -9,6 +9,12 @@ import {
   parseStatementFromExtraction,
   parseTransactionPages,
 } from "@/lib/statement";
+
+const KNOWN_FIXTURE_PATH = path.resolve(
+  process.env.STATEMENT_FIXTURE_DIRECTORY ?? path.join(process.cwd(), "statements"),
+  "Statement_CRDf6412efd4bd3894627eb4c658e86df2457df654268874e6d59.pdf",
+);
+const localFixtureIt = existsSync(KNOWN_FIXTURE_PATH) ? it : it.skip;
 
 describe("statement parser", () => {
   it("extracts expected metadata fields from sample text", () => {
@@ -58,57 +64,53 @@ Continued over page..`,
     expect(transactions[2].isCredit).toBe(true);
   });
 
-  it("matches expected metadata and totals for the known fixture pdf", async () => {
-    const bytes = readFileSync(
-      path.resolve(
-        process.cwd(),
-        "statements/Statement_CRDf6412efd4bd3894627eb4c658e86df2457df654268874e6d59.pdf",
-      ),
-    );
-    const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
-    const extraction = await extractPdfTextFromBuffer(buffer);
+  localFixtureIt(
+    "matches expected metadata and totals for the known fixture pdf",
+    async () => {
+      const bytes = readFileSync(KNOWN_FIXTURE_PATH);
+      const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+      const extraction = await extractPdfTextFromBuffer(buffer);
 
-    const parsed = parseStatementFromExtraction(extraction);
+      const parsed = parseStatementFromExtraction(extraction);
 
-    expect(parsed.metadata.minimumDueDate).toBe("16 March 2026");
-    expect(parsed.metadata.cardNumbers).toEqual(["7248", "8489"]);
-    expect(parsed.metadata.closingBalance).toBe(3575.18);
-    expect(computeBalance(parsed.transactions, parsed.metadata.cardNumbers)).toBe(3575.18);
+      expect(parsed.metadata.minimumDueDate).toBe("16 March 2026");
+      expect(parsed.metadata.cardNumbers).toEqual(["7248", "8489"]);
+      expect(parsed.metadata.closingBalance).toBe(3575.18);
+      expect(computeBalance(parsed.transactions, parsed.metadata.cardNumbers)).toBe(3575.18);
 
-    const actualSummaries = Object.fromEntries(
-      buildCardSummary(parsed.transactions, parsed.metadata.cardNumbers).map((row) => [
-        row.cardNumber,
-        row.netTotal,
-      ]),
-    );
+      const actualSummaries = Object.fromEntries(
+        buildCardSummary(parsed.transactions, parsed.metadata.cardNumbers).map((row) => [
+          row.cardNumber,
+          row.netTotal,
+        ]),
+      );
 
-    expect(actualSummaries).toEqual({
-      "7248": 2009.6,
-      "8489": 1565.58,
-    });
-  });
+      expect(actualSummaries).toEqual({
+        "7248": 2009.6,
+        "8489": 1565.58,
+      });
+    },
+  );
 
-  it("reconciliation deltas are zero for the known fixture pdf", async () => {
-    const bytes = readFileSync(
-      path.resolve(
-        process.cwd(),
-        "statements/Statement_CRDf6412efd4bd3894627eb4c658e86df2457df654268874e6d59.pdf",
-      ),
-    );
-    const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
-    const extraction = await extractPdfTextFromBuffer(buffer);
+  localFixtureIt(
+    "reconciliation deltas are zero for the known fixture pdf",
+    async () => {
+      const bytes = readFileSync(KNOWN_FIXTURE_PATH);
+      const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+      const extraction = await extractPdfTextFromBuffer(buffer);
 
-    const parsed = parseStatementFromExtraction(extraction);
-    const deltas = Object.fromEntries(
-      buildReconciliationRows(
-        parsed.metadata,
-        parsed.transactions,
-        parsed.metadata.cardNumbers,
-      ).map((row) => [row.item, row.delta]),
-    );
+      const parsed = parseStatementFromExtraction(extraction);
+      const deltas = Object.fromEntries(
+        buildReconciliationRows(
+          parsed.metadata,
+          parsed.transactions,
+          parsed.metadata.cardNumbers,
+        ).map((row) => [row.item, row.delta]),
+      );
 
-    expect(Math.abs(deltas.Purchases ?? 0)).toBe(0);
-    expect(Math.abs(deltas["Payments and Credits"] ?? 0)).toBe(0);
-    expect(Math.abs(deltas["Computed Closing Balance"] ?? 0)).toBe(0);
-  });
+      expect(Math.abs(deltas.Purchases ?? 0)).toBe(0);
+      expect(Math.abs(deltas["Payments and Credits"] ?? 0)).toBe(0);
+      expect(Math.abs(deltas["Computed Closing Balance"] ?? 0)).toBe(0);
+    },
+  );
 });

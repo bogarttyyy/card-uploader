@@ -5,6 +5,9 @@ export type PdfTextExtractionResult = {
 
 export type PdfExtractionErrorCode =
   | "unsupported_file"
+  | "file_too_large"
+  | "invalid_pdf"
+  | "aborted"
   | "worker_unavailable"
   | "extraction_failed";
 

@@ -4,7 +4,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Pampi Card",
-  description: "Next.js port in progress for the credit card PDF to CSV converter.",
+  description: "Private browser-based Macquarie credit card statement parser and CSV exporter.",
   icons: {
     icon: [
       { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },

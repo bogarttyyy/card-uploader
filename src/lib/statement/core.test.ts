@@ -1,5 +1,6 @@
 import {
   buildCardSummary,
+  buildCombinedCardCsvData,
   buildCsvData,
   buildReconciliationRows,
   computeBalance,
@@ -11,6 +12,7 @@ import {
   parseAmount,
   parseStatementPeriodDate,
   transactionsToExportRows,
+  validateStatementForExport,
 } from "@/lib/statement";
 import type { ExportRow, StatementMetadata, Transaction } from "@/lib/statement";
 
@@ -199,5 +201,102 @@ describe("statement core", () => {
     expect(csvData).toContain("Card Number,Date,Description,Amount (AUD)");
     expect(csvData).toContain('7248,2026-01-21,Merchant A,50');
     expect(csvData).toContain('8489,2026-02-14,"eBay, ""Refund""",-4.22');
+  });
+
+  it("arranges cards in descending order with independent totals", () => {
+    const rows: ExportRow[] = [
+      {
+        "Card Number": "7248",
+        Date: "2026-01-21",
+        Description: "Merchant A",
+        "Amount (AUD)": 50,
+      },
+      {
+        "Card Number": "8489",
+        Date: "2026-02-14",
+        Description: 'eBay, "Refund"',
+        "Amount (AUD)": -4.22,
+      },
+      {
+        "Card Number": "7248",
+        Date: "2026-01-22",
+        Description: "Merchant B",
+        "Amount (AUD)": 25,
+      },
+    ];
+
+    expect(buildCombinedCardCsvData(rows, ["7248", "8489"])).toBe(
+      [
+        "Card Number,Date,Description,Amount (AUD),,,Card Number,Date,Description,Amount (AUD)",
+        '8489,2026-02-14,"eBay, ""Refund""",-4.22,,,7248,2026-01-21,Merchant A,50',
+        ",,,,,,7248,2026-01-22,Merchant B,25",
+        ",,,-4.22,,,,,,",
+        ",,,,,,,,,75",
+      ].join("\n"),
+    );
+  });
+
+  it("supports empty and single-card combined exports", () => {
+    expect(buildCombinedCardCsvData([], [])).toBe("");
+    expect(buildCombinedCardCsvData([], ["7248"])).toBe(
+      [
+        "Card Number,Date,Description,Amount (AUD)",
+        ",,,",
+        ",,,0",
+      ].join("\n"),
+    );
+  });
+
+  it("neutralizes spreadsheet formulas and preserves leading-zero card numbers", () => {
+    const rows: ExportRow[] = [
+      {
+        "Card Number": "0042",
+        Date: "2026-01-21",
+        Description: "=HYPERLINK(\"https://attacker.example\")",
+        "Amount (AUD)": 10,
+      },
+    ];
+
+    expect(buildCsvData(rows)).toContain(
+      "'0042,2026-01-21,\"'=HYPERLINK(\"\"https://attacker.example\"\")\",10",
+    );
+  });
+
+  it("blocks export on required reconciliation mismatches but not a missing due date", () => {
+    const metadata = createMetadata({
+      openingBalance: 100,
+      closingBalance: 150,
+      paymentsAndCredits: 0,
+      purchasesTotal: 50,
+      primaryCard: "0042",
+      cardNumbers: ["0042"],
+    });
+    const transactions: Transaction[] = [
+      {
+        cardNumber: "0042",
+        date: "Jan 21",
+        description: "Merchant",
+        amountAud: 50,
+        isCredit: false,
+        isPayment: false,
+      },
+    ];
+    const rows = buildReconciliationRows(metadata, transactions, metadata.cardNumbers);
+    const ready = validateStatementForExport(metadata, transactions, rows);
+
+    expect(ready.isExportReady).toBe(true);
+    expect(ready.warnings).toEqual([
+      expect.objectContaining({ code: "missing_due_date" }),
+    ]);
+
+    const mismatch = validateStatementForExport(
+      metadata,
+      transactions,
+      rows.map((row) => (row.item === "Purchases" ? { ...row, delta: 0.01 } : row)),
+    );
+    expect(mismatch.isExportReady).toBe(false);
+    expect(mismatch.issues).toEqual([
+      expect.objectContaining({ code: "reconciliation_mismatch" }),
+    ]);
   });
 });

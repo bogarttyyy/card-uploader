@@ -18,7 +18,7 @@ describe("pdf extraction contracts", () => {
     globalThis.Worker = undefined;
 
     try {
-      const file = new File([new Uint8Array([0x25, 0x50, 0x44, 0x46])], "statement.pdf", {
+      const file = new File(["%PDF-1.4"], "statement.pdf", {
         type: "application/pdf",
       });
 
@@ -28,5 +28,37 @@ describe("pdf extraction contracts", () => {
     } finally {
       globalThis.Worker = originalWorker;
     }
+  });
+
+  it("accepts a missing iPhone MIME type when the filename is a PDF", () => {
+    expect(() => validatePdfFile(new File(["%PDF-"], "statement.PDF"))).not.toThrow();
+  });
+
+  it("rejects oversized files before reading or starting a worker", async () => {
+    const file = new File([new Uint8Array(10 * 1024 * 1024 + 1)], "statement.pdf", {
+      type: "application/pdf",
+    });
+
+    await expect(extractPdfText(file)).rejects.toMatchObject({ code: "file_too_large" });
+  });
+
+  it("rejects a renamed non-PDF using its file signature", async () => {
+    const file = new File(["not really a pdf"], "statement.pdf", {
+      type: "application/pdf",
+    });
+
+    await expect(extractPdfText(file)).rejects.toMatchObject({ code: "invalid_pdf" });
+  });
+
+  it("honours cancellation before reading the file", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    const file = new File(["%PDF-1.4"], "statement.pdf", {
+      type: "application/pdf",
+    });
+
+    await expect(extractPdfText(file, { signal: controller.signal })).rejects.toMatchObject({
+      code: "aborted",
+    });
   });
 });

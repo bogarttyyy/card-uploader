@@ -2,11 +2,14 @@
 
 Browser-based Macquarie credit card statement parser and CSV exporter built with Next.js.
 
+PDF contents remain in the browser. Failure reporting sends only an anonymous processing stage and
+error code—never filenames, PDF text, statement data, timestamps, raw errors, or browser details.
+
 The repo now contains a single app at the repository root. The old Streamlit/Python app has been removed.
 
 ## Requirements
 
-- Node.js 22
+- Node.js 22 or 24 (`.nvmrc` uses Node 22 for local development)
 - npm 10 or newer
 
 Use `.nvmrc` if you manage Node with `nvm`:
@@ -39,6 +42,12 @@ Run linting:
 npm run lint
 ```
 
+Run application and test type checks:
+
+```bash
+npm run typecheck
+```
+
 Run unit and component tests:
 
 ```bash
@@ -57,15 +66,28 @@ Run browser smoke tests:
 npm run test:e2e
 ```
 
+The Playwright suite covers Desktop Chrome, Desktop Safari, and iPhone 15/WebKit. To verify
+production headers locally, build first and run with `PLAYWRIGHT_USE_PRODUCTION=1`.
+
+Run the high-severity dependency gate:
+
+```bash
+npm audit --audit-level=high
+```
+
 ## Supported Workflow
 
 - Upload a supported Macquarie Bank credit card statement PDF
 - Extract PDF text fully in the browser
 - Parse statement metadata and per-card transactions
 - Review reconciliation totals
-- Export combined or per-card CSV files
+- Export per-card CSV files or one Google Sheets-friendly combined CSV with cards arranged
+  side by side
+- Block exports until required metadata and reconciliation totals are complete and exact
 
-Fixture PDFs used by tests live in `statements/`.
+Optional local regression PDFs live in the ignored `statements/` directory. Fixture-dependent
+tests run when those files are available and skip cleanly in CI so private statements are never
+required in the repository.
 
 ## Vercel Setup
 
